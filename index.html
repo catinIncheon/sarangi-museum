@@ -386,8 +386,7 @@ function plant(x,z){
   g.position.set(x,0,z); scene.add(g);
   OBST.push({x0:x-0.4,x1:x+0.4,z0:z-0.4,z1:z+0.4});
 }
-// 화분은 사진을 가리지 않게 벽에서 떨어진 문 옆·입구 옆에
-plant(-(DOOR/2+0.7),Z1+0.6); plant(DOOR/2+0.7,Z1+0.6); plant(-1.7,Z0-0.6); plant(1.7,Z0-0.6);
+// 복도 화분은 3인칭 카메라 앞을 가려서 뺐어요
 
 // 바닥 발자국
 (function(){
@@ -457,6 +456,7 @@ PHOTOS.forEach((p,i)=>{
   frames.push({i, x, z});
 });
 /* ================== 광장 ================== */
+const BENCHES=[];
 const PL=12, PZ0=Z1, PZ1=Z1-26, SZ=(PZ0+PZ1)/2;   // 광장 반폭, 시작/끝 z, 동상 위치 z
 (function plaza(){
   // 문 위 안내판 (복도 쪽)
@@ -541,6 +541,7 @@ const PL=12, PZ0=Z1, PZ1=Z1-26, SZ=(PZ0+PZ1)/2;   // 광장 반폭, 시작/끝 z
     g.position.set(x,0,z); g.rotation.y=r; scene.add(g);
     const hz=Math.abs(Math.sin(r))>0.5; const hw=hz?0.4:1.3, hd=hz?1.3:0.4;
     OBST.push({x0:x-hw,x1:x+hw,z0:z-hd,z1:z+hd});
+    BENCHES.push({x,z,r});
   });
 
   // 꽃
@@ -780,6 +781,15 @@ let wandMouse, wandString;
   });
 })();
 
+/* ---- 공원 벤치: 자리 2개씩, 앉으면 식빵 자세 ---- */
+BENCHES.forEach((b,i)=>{
+  const k='bench'+i, c=Math.cos(b.r), sn=Math.sin(b.r);
+  const W2=(lx,lz)=>new THREE.Vector3(b.x+lx*c+lz*sn, 0, b.z-lx*sn+lz*c);
+  STAY[k]=[W2(-0.55,0), W2(0.55,0)];
+  ITEMS[k]={pos:new THREE.Vector3(b.x,0.5,b.z), title:'공원 벤치', sub:'2마리까지 앉아서 식빵 구울 수 있어요', btn:'앉기',
+    yaw:b.r, sit:true, stand:[W2(-0.55,-0.85), W2(0.55,-0.85)]};
+});
+
 function triggerFood(k){ const f=ITEMS[k]&&ITEMS[k].food; if(!f||f.state!=='idle') return false; f.state='eating'; f.t=0; return true; }
 function hitBall(sign){
   const b=ITEMS.ball.ball; if(b.state!=='idle') return false;
@@ -996,7 +1006,7 @@ function checkNear(){
     if(typeof best==='string'){ const it=ITEMS[best];
       document.getElementById('nt').textContent=it.title;
       document.getElementById('ns').textContent= STAY[best] ? `${it.sub} · 지금 ${stayPlayers(best)}마리` : it.sub;
-      btn.textContent= STAY[best]&&myAct.k===best ? (best==='wand'?'그만 놀기':'그만 긁기') : it.btn;
+      btn.textContent= STAY[best]&&myAct.k===best ? (best==='wand'?'그만 놀기':it.sit?'일어나기':'그만 긁기') : it.btn;
       if(myAct.k===best) document.getElementById('ns').textContent='조이스틱을 밀면 바로 움직일 수 있어요'; btn.style.display=''; near.classList.add('on'); }
     else if(best===-7){ document.getElementById('nt').textContent='발도장 존'; document.getElementById('ns').textContent='판을 눌러서 도장을 꾹 찍어보세요'; btn.style.display='none'; near.classList.add('on'); }
     else if(best>=0){ near.classList.remove('on'); }
@@ -1126,7 +1136,11 @@ function setAct(k,dur,sign){
   Object.assign(myAct,{k,t0:clock.elapsedTime,dur,ts});
   nearIdx=-100; sendPresence(true);
 }
-function endAct(){ myAct.k=''; myAct.slot=-1; nearIdx=-100; sendPresence(true); }
+function endAct(){
+  const it=ITEMS[myAct.k];
+  if(it && it.sit && it.stand[myAct.slot]){ me.x=it.stand[myAct.slot].x; me.z=it.stand[myAct.slot].z; }
+  myAct.k=''; myAct.slot=-1; nearIdx=-100; sendPresence(true);
+}
 function doItem(k){
   if(k==='churu'||k==='salmon'){
     if(myAct.k) return;
@@ -1140,10 +1154,11 @@ function doItem(k){
   } else if(STAY[k]){
     if(myAct.k===k){ endAct(); return; }
     if(myAct.k) return;
-    if(stayPlayers(k)>=4){ showToast('자리가 꽉 찼어요 (최대 4마리)'); return; }
+    const MAX=STAY[k].length;
+    if(stayPlayers(k)>=MAX){ showToast(`자리가 꽉 찼어요 (최대 ${MAX}마리)`); return; }
     const used=usedSlots(k); let s=0; while(used.has(s)) s++;
-    if(s>3){ showToast('자리가 꽉 찼어요 (최대 4마리)'); return; }
-    myAct.slot=s; setAct(k,Infinity); showToast(k==='wand'?'쥐 잡자! 🐭':'벅벅벅! 시원하다 😼');
+    if(s>=MAX){ showToast(`자리가 꽉 찼어요 (최대 ${MAX}마리)`); return; }
+    myAct.slot=s; setAct(k,Infinity); showToast(k==='wand'?'쥐 잡자! 🐭':ITEMS[k].sit?'식빵 굽는 중… 🍞':'벅벅벅! 시원하다 😼');
   }
 }
 // 1인칭 앞발
@@ -1292,8 +1307,10 @@ function animCat(c,dt,t){
     else if((c.act==='churu'||c.act==='salmon') && ael<2.8) mode='eat';
     else if(c.act==='ball' && ael<1.4) mode='bat';
     else if(c.act.startsWith('scr')) mode='scratch';
+    else if(c.act.startsWith('bench')) mode='sit';
     let yawT=c.tyaw;
-    if(mode){ const ip=c.act==='wand'?wandMouse.position:c.act==='ball'?ITEMS.ball.home:ITEMS[c.act].pos; yawT=Math.atan2(-(ip.x-g.position.x),-(ip.z-g.position.z)); }
+    if(mode==='sit') yawT=ITEMS[c.act].yaw;
+    else if(mode){ const ip=c.act==='wand'?wandMouse.position:c.act==='ball'?ITEMS.ball.home:ITEMS[c.act].pos; yawT=Math.atan2(-(ip.x-g.position.x),-(ip.z-g.position.z)); }
     g.rotation.y=angLerp(g.rotation.y,yawT,k);
     u.phase+=dt*(moving&&!mode?10:0);
     let rigX=0, headX=0, rigY=moving?Math.abs(Math.sin(u.phase))*0.04:Math.sin(t*2+u.phase)*0.006;
@@ -1303,12 +1320,15 @@ function animCat(c,dt,t){
       if(mode==='scratch' && i<2) tgt=1.6+Math.sin(t*14+(i?Math.PI:0))*0.45;
       if(mode==='play' && i<2) tgt=0.8+Math.max(0,Math.sin(t*6+(i?Math.PI:0)))*0.9;
       l.rotation.x+=(tgt-l.rotation.x)*0.3;
+      const ls=mode==='sit'?0.12:1; l.scale.y+=(ls-l.scale.y)*0.2;   // 식빵: 다리 쏙
     });
     if(mode==='eat'){ rigX=-0.22; headX=-0.35+Math.sin(t*9)*0.12; }
     if(mode==='scratch'){ rigX=0.6; rigY=0.12; }
+    if(mode==='sit'){ rigY=-0.2+Math.sin(t*1.6)*0.006; headX=-0.12; }
     if(mode==='play'){ rigX=0.38; rigY=0.08+Math.abs(Math.sin(t*3))*0.1; }
     u.rig.rotation.x+=(rigX-u.rig.rotation.x)*0.15;
     u.rig.position.y=rigY;
+    const gy=mode==='sit'?0.5:0; g.position.y+=(gy-g.position.y)*0.2;   // 벤치 위로
     u.head.rotation.x+=(headX-u.head.rotation.x)*0.2;
     u.tail.rotation.z=Math.sin(t*(moving||mode==='play'?5:2)+u.phase)*0.35;
     u.head.rotation.y=mode?0:Math.sin(t*0.7+u.phase)*0.15;
@@ -1327,7 +1347,7 @@ function frame(){
   if(myCat){ Object.assign(myCat,{tx:me.x,tz:me.z,tyaw:me.catYaw,walk:me.walking,act:myAct.k,actT0:myAct.t0}); animCat(myCat,dt,t); }
   cats.forEach(c=>animCat(c,dt,t));
   // 3인칭 카메라
-  camTgt.set(me.x,0.95,me.z);
+  camTgt.set(me.x,0.95+(myCat?myCat.g.position.y:0),me.z);
   let dist=3.4; const cp=Math.cos(me.pitch);
   camDir.set(Math.sin(me.yaw)*cp, Math.sin(me.pitch), Math.cos(me.yaw)*cp);
   camRay.set(camTgt,camDir); camRay.far=dist+0.3;
