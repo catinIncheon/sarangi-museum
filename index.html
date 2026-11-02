@@ -167,7 +167,10 @@
     myRef.onDisconnect().remove();
     let mine={}, timer=null, last=0, peers=[];
     const listeners=[];
-    function flush(){ timer=null; last=Date.now(); myRef.set(Object.assign({},mine,{h:TS})).catch(()=>{}); }
+    function clean(o){ const r={}; for(const k in o){ const v=o[k];
+        if(typeof v==='number'){ if(isFinite(v)) r[k]=v; } else if(typeof v==='string'||typeof v==='boolean') r[k]=v; } return r; }
+    function flush(){ timer=null; last=Date.now();
+      try{ myRef.set(Object.assign(clean(mine),{h:TS})).catch(()=>{}); }catch(e){ console.warn(e); } }
     setInterval(()=>{ if(Object.keys(mine).length) flush(); },20000);   // 살아있다는 신호
     rtdb.ref('players').on('value',snap=>{
       const list=[], t=now();
@@ -272,7 +275,7 @@ const FURS = [
 /* ================== 기본 설정 ================== */
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.5));
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.05;
@@ -953,7 +956,7 @@ function step(dt){
   if(!myAct.k){ if(keys.ArrowLeft) me.yaw+=dt*1.8; if(keys.ArrowRight) me.yaw-=dt*1.8; }
   f+=-jy; s+=jx;
   const mag=Math.min(1,Math.hypot(f,s));
-  if(STAY[myAct.k] && mag>0.35 && clock.elapsedTime-myAct.t0>0.6) endAct();
+  if(myAct.k && mag>0.2 && clock.elapsedTime-myAct.t0>0.25) endAct();   // 조이스틱을 밀면 바로 행동 끝내고 걷기
   if(myAct.k){ me.walking=false; return 0; }
   me.walking=mag>0.08;
   if(!me.walking) return 0;
@@ -993,7 +996,8 @@ function checkNear(){
     if(typeof best==='string'){ const it=ITEMS[best];
       document.getElementById('nt').textContent=it.title;
       document.getElementById('ns').textContent= STAY[best] ? `${it.sub} · 지금 ${stayPlayers(best)}마리` : it.sub;
-      btn.textContent= STAY[best]&&myAct.k===best ? (best==='wand'?'그만 놀기':'그만 긁기') : it.btn; btn.style.display=''; near.classList.add('on'); }
+      btn.textContent= STAY[best]&&myAct.k===best ? (best==='wand'?'그만 놀기':'그만 긁기') : it.btn;
+      if(myAct.k===best) document.getElementById('ns').textContent='조이스틱을 밀면 바로 움직일 수 있어요'; btn.style.display=''; near.classList.add('on'); }
     else if(best===-7){ document.getElementById('nt').textContent='발도장 존'; document.getElementById('ns').textContent='판을 눌러서 도장을 꾹 찍어보세요'; btn.style.display='none'; near.classList.add('on'); }
     else if(best>=0){ near.classList.remove('on'); }
     else if(best===-8){ document.getElementById('nt').textContent='방명록'; document.getElementById('ns').textContent='사랑이에게 한마디 남겨주세요'; btn.textContent='쓰기·보기'; btn.style.display=''; near.classList.add('on'); }
@@ -1075,7 +1079,7 @@ function upsertCat(p){
       if(a==='churu'||a==='salmon') triggerFood(a);
       if(a==='ball') hitBall(ai%2===0?1:-1);
     }
-    c.act=a; c.lastAi=ai; nearIdx=-100;
+    c.act=a; c.lastAi=ai; if(typeof nearIdx==='string' && (nearIdx===a || STAY[nearIdx])) nearIdx=-100;
   }
 }
 function removeCat(peer){ const c=cats.get(peer); if(!c) return; scene.remove(c.g); cats.delete(peer); }
@@ -1312,6 +1316,10 @@ function animCat(c,dt,t){
 }
 const camTgt=new THREE.Vector3(), camDir=new THREE.Vector3(), camRay=new THREE.Raycaster(); let camDist=3.4;
 function loop(){
+  requestAnimationFrame(loop);
+  try{ frame(); }catch(e){ console.warn(e); }
+}
+function frame(){
   const dt=Math.min(clock.getDelta(),0.05), t=clock.elapsedTime;
   if(entered && !light.classList.contains('on') && !gbEl.classList.contains('on')){ const mg=step(dt); bob+=dt*mg*9; } else me.walking=false;
   updateMyAct(dt,t); updateItems(dt,t);
@@ -1329,7 +1337,6 @@ function loop(){
   camera.position.copy(camTgt).addScaledVector(camDir,camDist);
   camera.lookAt(camTgt.x,camTgt.y+0.3,camTgt.z);
   renderer.render(scene,camera);
-  requestAnimationFrame(loop);
 }
 (document.fonts?Promise.all([document.fonts.load("700 40px 'Gowun Batang'"),document.fonts.load("40px 'Gowun Dodum'")]):Promise.resolve())
   .catch(()=>{}).then(()=>rebuilders.forEach(f=>f()));
