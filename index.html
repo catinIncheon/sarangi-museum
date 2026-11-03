@@ -33,6 +33,8 @@
   #near.on{opacity:1;pointer-events:auto;transform:translateX(-50%)}
   #near .t{font-family:'Gowun Batang',serif;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #near .s{font-size:12px;color:var(--soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nextra{display:flex;gap:6px}
+  .nextra button[disabled]{opacity:.35}
   #near button{flex:none;border:none;background:var(--ink);color:var(--cream);border-radius:999px;padding:9px 14px;font-family:'Gowun Dodum';font-size:13px;cursor:pointer}
 
   .hint{position:fixed;left:50%;bottom:calc(170px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(29,23,20,.62);color:#f3e8da;font-size:12px;
@@ -101,7 +103,7 @@
 
 <div class="top"><h1>사랑이 전시관</h1><div class="who" id="who">혼자 관람 중</div></div>
 
-<div id="near"><div style="min-width:0"><div class="t" id="nt"></div><div class="s" id="ns"></div></div><button id="nbtn">크게 보기</button></div>
+<div id="near"><div style="min-width:0"><div class="t" id="nt"></div><div class="s" id="ns"></div></div><button id="nbtn">크게 보기</button><span id="nextra" class="nextra"></span></div>
 
 <div id="joy"><div id="knob"></div></div>
 <div class="btns">
@@ -518,7 +520,8 @@ const PL=12, PZ0=Z1, PZ1=Z1-26, SZ=(PZ0+PZ1)/2;   // 광장 반폭, 시작/끝 z
     g.scale.setScalar(s); g.position.set(x,0,z); scene.add(g);
   }
   [[-10.6,PZ0-7],[10.6,PZ0-7],[-9.5,PZ1+3],[9.5,PZ1+3]].forEach(([x,z])=>{ tree(x,z,1.15); OBST.push({x0:x-0.5,x1:x+0.5,z0:z-0.5,z1:z+0.5}); });
-  for(let k=0;k<14;k++){ const a=k/14*Math.PI*2; tree(Math.cos(a)*24, SZ+Math.sin(a)*24, 1.3+Math.random()*0.6); }
+  for(let k=0;k<14;k++){ const a=k/14*Math.PI*2, tz=SZ+Math.sin(a)*24; if(tz>Z1-3) continue;   // 건물 뒤(안 보이는 곳)는 생략
+    tree(Math.cos(a)*24, tz, 1.3+Math.random()*0.6); }
 
   // 가로등
   const poleM=new THREE.MeshStandardMaterial({color:0x2e2622, metalness:.5, roughness:.4});
@@ -603,6 +606,51 @@ const PL=12, PZ0=Z1, PZ1=Z1-26, SZ=(PZ0+PZ1)/2;   // 광장 반폭, 시작/끝 z
   const ssp=new THREE.SpotLight(0xffe6c4, 1.2, 14, 0.5, 0.6, 1.2); ssp.position.set(0,9,SZ+5); ssp.target=st; scene.add(ssp);
 })();
 
+/* ================== 캣타워 (광장 동상 뒤) ================== */
+const TZ=Z1-23.4;
+const TOWER={x:0,z:TZ};
+(function(){
+  const plush=new THREE.MeshStandardMaterial({color:0x9c9894, roughness:1});
+  const plushIn=new THREE.MeshStandardMaterial({color:0x6f6b68, roughness:1});
+  const sc=mk(64,256), x=sc.getContext('2d'); x.fillStyle='#dcc8a0'; x.fillRect(0,0,64,256);
+  for(let y=0;y<256;y+=6){ x.fillStyle=y%12?'#c9b285':'#e8d7b3'; x.fillRect(0,y,64,3); }
+  const sisal=new THREE.MeshStandardMaterial({map:tex(sc,[2,3]), roughness:1});
+  const g=new THREE.Group();
+  const B=(w,h,d,px,py,pz,m)=>{ const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m||plush); o.position.set(px,py,pz); g.add(o); return o; };
+  const P=(px,pz,y0,y1)=>{ const o=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,y1-y0,14),sisal); o.position.set(px,(y0+y1)/2,pz); g.add(o); };
+  // 바닥판 + 기둥
+  B(2.6,0.08,2.0, 0,0.04,0);
+  [[-0.8,-0.55],[0.8,-0.55],[-0.8,0.55],[0.8,0.55]].forEach(([px,pz])=>P(px,pz,0.08,1.0));
+  // 1층 집 (속이 빈 상자, 앞에 입구)
+  function house(cx,y0,w,h,d,ow,oh){
+    B(w,0.06,d, cx,y0+0.03,0);                         // 바닥
+    B(w,0.06,d, cx,y0+h-0.03,0);                       // 지붕
+    B(w,h,0.06, cx,y0+h/2,-d/2+0.03, plushIn);         // 뒷벽
+    B(0.06,h,d, cx-w/2+0.03,y0+h/2,0);                 // 왼벽
+    B(0.06,h,d, cx+w/2-0.03,y0+h/2,0);                 // 오른벽
+    const side=(w-ow)/2;
+    B(side,h,0.06, cx-w/2+side/2,y0+h/2,d/2-0.03);     // 앞 왼쪽
+    B(side,h,0.06, cx+w/2-side/2,y0+h/2,d/2-0.03);     // 앞 오른쪽
+    B(ow,h-oh,0.06, cx,y0+oh+(h-oh)/2,d/2-0.03);       // 입구 위
+  }
+  house(0,1.0,1.9,1.45,1.5,0.95,1.2);
+  // 앞 계단 경사로
+  const ramp=new THREE.Group();
+  for(let i=0;i<6;i++){ const st=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.3),plush); st.position.set(0,i*0.17+0.05,-i*0.2); ramp.add(st); }
+  ramp.position.set(0,0.06,1.85); g.add(ramp);
+  // 1층 지붕 위: 계단 기둥(왼쪽) + 기둥 두 개(오른쪽)
+  for(let i=0;i<6;i++) B(0.7,0.2,0.62, -0.55,2.55+i*0.21,0.02*i);
+  P(0.6,-0.3,2.45,3.75); P(0.6,0.3,2.45,3.75);
+  // 해먹 바구니
+  const bowl=new THREE.Mesh(new THREE.SphereGeometry(0.42,20,10,0,Math.PI*2,Math.PI/2,Math.PI/2), plush);
+  bowl.position.set(1.25,3.15,0); g.add(bowl);
+  // 꼭대기 판 + 2층 집
+  B(2.3,0.08,1.1, 0,3.79,0);
+  house(0.35,3.83,1.45,1.45,1.05,0.8,1.15);
+  g.position.set(TOWER.x,0,TZ); scene.add(g);
+  OBST.push({x0:-1.4,x1:1.6,z0:TZ-1.05,z1:TZ+2.0});
+  const t=tagSprite('캣타워 (층마다 1마리)'); t.position.set(0.35,5.95,TZ); scene.add(t);
+})();
 /* ================== 방명록 게시판 (광장 오른쪽) ================== */
 const GBX=PL-1.3, GBZ=SZ;
 const NOTE_COLS=['#fff1a8','#ffd6e0','#d4f0d0','#d6e6ff','#ffe2c2','#ecdcff'];
@@ -780,6 +828,15 @@ let wandMouse, wandString;
     STAY[k]=[[-w,0],[w,0],[-0.45,-0.75],[0.45,-0.75]].map(([dx,dz])=>new THREE.Vector3(px+dx,0,ZS+dz));
   });
 })();
+
+/* ---- 캣타워 층 (한 층에 1마리) ---- */
+const TOWER_STAND=new THREE.Vector3(0,0,TZ+2.45);
+[[0,1.07,0.05],[0.35,3.90,0.0],[0.35,5.29,-0.05]].forEach(([lx,y,lz],i)=>{
+  const k='tw'+(i+1);
+  STAY[k]=[new THREE.Vector3(TOWER.x+lx,0,TZ+lz)];
+  ITEMS[k]={pos:new THREE.Vector3(TOWER.x+lx,y,TZ+lz), title:`캣타워 ${i+1}층`, sub:'', btn:`${i+1}층`, yaw:Math.PI, sit:true, sitY:y, hidden:true, stand:[TOWER_STAND]};
+});
+ITEMS.tower={pos:TOWER_STAND.clone(), title:'캣타워', sub:'원하는 층을 눌러 식빵 굽기', btn:'', tower:true};
 
 /* ---- 공원 벤치: 자리 2개씩, 앉으면 식빵 자세 ---- */
 BENCHES.forEach((b,i)=>{
@@ -994,8 +1051,8 @@ function checkNear(){
   }
   // 책상 위 물건이 제일 우선
   let ib=null, ibd=1.9;
-  for(const k in ITEMS){ const p=ITEMS[k].pos, d=Math.hypot(p.x-me.x,p.z-me.z); if(d<ibd){ ibd=d; ib=k; } }
-  if(STAY[myAct.k]) ib=myAct.k;
+  for(const k in ITEMS){ if(ITEMS[k].hidden) continue; const p=ITEMS[k].pos, d=Math.hypot(p.x-me.x,p.z-me.z); if(d<ibd){ ibd=d; ib=k; } }
+  if(STAY[myAct.k]) ib=myAct.k.startsWith('tw')?'tower':myAct.k;
   if(ib) best=ib;
   if(best===-1 && Math.hypot(me.x-GBX, me.z-GBZ)<4.8) best=-8;   // 방명록 근처
   if(best===-1 && Math.hypot(me.x-STX, me.z-STZ)<4.8) best=-7;   // 도장존 근처
@@ -1003,7 +1060,22 @@ function checkNear(){
   if(best!==nearIdx){
     nearIdx=best;
     const btn=document.getElementById('nbtn');
-    if(typeof best==='string'){ const it=ITEMS[best];
+    const extra=document.getElementById('nextra'); extra.textContent='';
+    if(best==='tower'){
+      document.getElementById('nt').textContent='캣타워';
+      btn.style.display='none';
+      if(myAct.k.startsWith('tw')){
+        document.getElementById('ns').textContent=`${myAct.k.slice(2)}층에서 식빵 굽는 중 🍞`;
+        const b=document.createElement('button'); b.textContent='내려오기'; b.onclick=()=>endAct(); extra.appendChild(b);
+      } else {
+        document.getElementById('ns').textContent='층마다 한 마리씩 식빵 구울 수 있어요';
+        ['tw1','tw2','tw3'].forEach((k,i)=>{ const b=document.createElement('button'); b.textContent=`${i+1}층`;
+          if(stayPlayers(k)>=1){ b.disabled=true; b.textContent=`${i+1}층 🐱`; }
+          b.onclick=()=>doItem(k); extra.appendChild(b); });
+      }
+      near.classList.add('on');
+    }
+    else if(typeof best==='string'){ const it=ITEMS[best];
       document.getElementById('nt').textContent=it.title;
       document.getElementById('ns').textContent= STAY[best] ? `${it.sub} · 지금 ${stayPlayers(best)}마리` : it.sub;
       btn.textContent= STAY[best]&&myAct.k===best ? (best==='wand'?'그만 놀기':it.sit?'일어나기':'그만 긁기') : it.btn;
@@ -1089,7 +1161,7 @@ function upsertCat(p){
       if(a==='churu'||a==='salmon') triggerFood(a);
       if(a==='ball') hitBall(ai%2===0?1:-1);
     }
-    c.act=a; c.lastAi=ai; if(typeof nearIdx==='string' && (nearIdx===a || STAY[nearIdx])) nearIdx=-100;
+    c.act=a; c.lastAi=ai; if(typeof nearIdx==='string' && (nearIdx===a || STAY[nearIdx] || nearIdx==='tower')) nearIdx=-100;
   }
 }
 function removeCat(peer){ const c=cats.get(peer); if(!c) return; scene.remove(c.g); cats.delete(peer); }
@@ -1153,12 +1225,13 @@ function doItem(k){
     setAct('ball',1.3,sign); showToast('툭! 데굴데굴~');
   } else if(STAY[k]){
     if(myAct.k===k){ endAct(); return; }
+    if(myAct.k && myAct.k.startsWith('tw') && k.startsWith('tw')) endAct();
     if(myAct.k) return;
     const MAX=STAY[k].length;
-    if(stayPlayers(k)>=MAX){ showToast(`자리가 꽉 찼어요 (최대 ${MAX}마리)`); return; }
+    if(stayPlayers(k)>=MAX){ showToast(MAX===1?'다른 고양이가 이미 있어요':`자리가 꽉 찼어요 (최대 ${MAX}마리)`); return; }
     const used=usedSlots(k); let s=0; while(used.has(s)) s++;
     if(s>=MAX){ showToast(`자리가 꽉 찼어요 (최대 ${MAX}마리)`); return; }
-    myAct.slot=s; setAct(k,Infinity); showToast(k==='wand'?'쥐 잡자! 🐭':ITEMS[k].sit?'식빵 굽는 중… 🍞':'벅벅벅! 시원하다 😼');
+    myAct.slot=s; setAct(k,Infinity); showToast(k==='wand'?'쥐 잡자! 🐭':k.startsWith('tw')?`${k.slice(2)}층에서 식빵 굽는 중… 🍞`:ITEMS[k].sit?'식빵 굽는 중… 🍞':'벅벅벅! 시원하다 😼');
   }
 }
 // 1인칭 앞발
@@ -1296,6 +1369,119 @@ addEventListener('resize',resize); resize();
 
 const clock=new THREE.Clock(); let bob=0;
 function angLerp(a,b,t){ let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; return a+d*t; }
+/* ================== 안내 고양이 (각자 화면에서 돌아다녀요) ================== */
+const NPCS=[];
+function npcFree(x,z,area){
+  const m=0.7;
+  if(area==='hall'){ if(x<-W/2+1.2||x>W/2-1.2||z<Z1+2||z>Z0-1.5) return false; }
+  else { if(x<-PL+1.5||x>PL-1.5||z<PZ1+1.5||z>Z1-2.5) return false; }
+  for(const o of OBST){ if(x>o.x0-m&&x<o.x1+m&&z>o.z0-m&&z<o.z1+m) return false; }
+  return true;
+}
+function npcPick(n){
+  for(let i=0;i<40;i++){
+    const x=n.area==='hall'?(Math.random()*2-1)*(W/2-1.4):(Math.random()*2-1)*(PL-2);
+    const z=n.area==='hall'?Z1+2+Math.random()*(Z0-Z1-3.5):PZ1+2+Math.random()*(Z1-PZ1-5);
+    let ok=npcFree(x,z,n.area);
+    for(let k=1;k<10&&ok;k++){ const u=k/10; ok=npcFree(n.x+(x-n.x)*u, n.z+(z-n.z)*u, n.area); }
+    if(ok){ n.goal={x,z}; return; }
+  }
+  n.goal=null;
+}
+function npcLabel(n){
+  if(n.label) n.g.remove(n.label);
+  n.label=labelSprite('안내냥 '+n.nick,'rgba(255,236,200,.95)','#3b2f2a',0.3); n.label.position.y=1.45; n.g.add(n.label);
+  if(n.bubble) n.g.remove(n.bubble);
+  n.bubble=labelSprite(n.msg,'rgba(201,139,107,.96)','#fffaf3',0.36); n.bubble.position.y=1.88; n.bubble.visible=false; n.g.add(n.bubble);
+}
+function addNpc(area,fur,nick,msg,x,z){
+  const g=makeCat(fur); g.position.set(x,0,z); scene.add(g);
+  const n={g,area,nick,msg,x,z,goal:null,job:null,wait:1+Math.random()*2,tx:x,tz:z,tyaw:0,walk:false,act:'',actT0:-99,self:true,slot:-1};
+  npcLabel(n); NPCS.push(n); return n;
+}
+addNpc('hall',0,'치즈','사진 구경하세요 🐾',0,-6);
+addNpc('plaza',2,'턱시','발바닥 도장이랑 방명록 남겨주세요 🐾',3,Z1-5);
+rebuilders.push(()=>NPCS.forEach(npcLabel));
+/* 안내냥이 가끔 놀거리를 써요 (각자 화면에서만, 관람객이 오면 비켜줘요) */
+const NPC_ACTS={hall:['churu','salmon','ball','wand'], plaza:['bench0','bench1','bench2','bench3','scrL','scrR','scrCL','scrCR','tw1','tw2','tw3']};
+const NPC_APPROACH={churu:[0,-7.9], ball:[0,-12.1], salmon:[0,-24.0]};
+function npcPathOk(n,x,z){
+  for(let k=1;k<=12;k++){
+    const u=k/12, px=n.x+(x-n.x)*u, pz=n.z+(z-n.z)*u;
+    if(n.area==='hall'){ if(px<-W/2+0.5||px>W/2-0.5||pz<Z1+0.6||pz>Z0-0.6) return false; }
+    else { if(px<-PL+1||px>PL-1||pz<PZ1+1||pz>Z1-0.4) return false; }
+    if(u>0.8) continue;
+    for(const o of OBST){ if(px>o.x0-0.35&&px<o.x1+0.35&&pz>o.z0-0.35&&pz<o.z1+0.35) return false; }
+  }
+  return true;
+}
+function slotTaken(k,i,self){
+  if(myAct.k===k && myAct.slot===i) return true;
+  if(usedSlots(k).has(i)) return true;
+  return NPCS.some(o=>o!==self && o.job && o.job.k===k && o.job.slot===i);
+}
+function npcTryJob(n){
+  const list=NPC_ACTS[n.area].slice().sort(()=>Math.random()-0.5);
+  for(const k of list){
+    const it=ITEMS[k]; if(!it) continue;
+    if(STAY[k]){
+      const free=STAY[k].map((_,i)=>i).filter(i=>!slotTaken(k,i,n));
+      if(!free.length) continue;
+      const i=free[Math.floor(Math.random()*free.length)], sp=STAY[k][i];
+      const ap=it.stand?it.stand[i]:sp;
+      if(!npcPathOk(n,ap.x,ap.z)) continue;
+      const dur=it.sit?12+Math.random()*10:k==='wand'?6+Math.random()*5:4+Math.random()*4;
+      n.job={k,slot:i,ap:{x:ap.x,z:ap.z},sp,dur,phase:'go',t:0}; return true;
+    } else if(NPC_APPROACH[k]){
+      const [ax,az]=NPC_APPROACH[k];
+      if(k==='ball' && ITEMS.ball.ball.state!=='idle') continue;
+      if(!npcPathOk(n,ax,az)) continue;
+      n.job={k,slot:-1,ap:{x:ax,z:az},sp:null,dur:k==='ball'?1.4:2.8,phase:'go',t:0}; return true;
+    }
+  }
+  return false;
+}
+function npcEndJob(n){
+  const j=n.job; if(!j) return;
+  const it=ITEMS[j.k];
+  if(it && it.sit && it.stand){ const st=it.stand[j.slot]||it.stand[0]; n.x=st.x; n.z=st.z; }
+  n.act=''; n.job=null; n.wait=2+Math.random()*3; n.walk=false;
+}
+function npcMoveTo(n,x,z,dt){
+  const gx=x-n.x, gz=z-n.z, gd=Math.hypot(gx,gz);
+  if(gd<0.12) return true;
+  const sp=Math.min(gd,1.1*dt); n.x+=gx/gd*sp; n.z+=gz/gd*sp; n.tyaw=Math.atan2(-gx,-gz); n.walk=true;
+  return false;
+}
+function updateNpcs(dt,t){
+  NPCS.forEach(n=>{
+    const dx=me.x-n.x, dz=me.z-n.z, d=Math.hypot(dx,dz);
+    const near=entered && d<5;
+    n.bubble.visible=near; if(near) n.bubble.position.y=1.88+(n.g.position.y)+Math.sin(t*3)*0.03;
+    const j=n.job;
+    if(j){
+      n.walk=false;
+      if(j.sp && slotTaken(j.k,j.slot,n)){ npcEndJob(n); }            // 관람객이 오면 비켜줘요
+      else if(j.phase==='go'){
+        if(npcMoveTo(n,j.ap.x,j.ap.z,dt)){
+          j.phase='do'; j.t=0; n.act=j.k; n.actT0=t; n.walk=false;
+          if(j.k==='ball'){ const sign=Math.random()<.5?-1:1; if(!hitBall(sign)){ npcEndJob(n); } }
+        }
+      } else {
+        j.t+=dt;
+        if(j.sp){ n.x+=(j.sp.x-n.x)*Math.min(1,dt*4); n.z+=(j.sp.z-n.z)*Math.min(1,dt*4); }
+        if(j.t>j.dur) npcEndJob(n);
+      }
+    }
+    else if(near && d<3){ n.walk=false; n.tyaw=Math.atan2(-dx,-dz); n.wait=Math.max(n.wait,1.5); }   // 가까이 오면 멈춰서 쳐다봐요
+    else if(n.wait>0){ n.wait-=dt; n.walk=false; if(n.wait<=0){ if(!(Math.random()<0.45 && npcTryJob(n))) npcPick(n); } }
+    else if(n.goal){
+      if(npcMoveTo(n,n.goal.x,n.goal.z,dt)){ n.goal=null; n.wait=2+Math.random()*4; n.walk=false; }
+    } else { n.wait=1; }
+    n.tx=n.x; n.tz=n.z;
+    animCat(n,dt,t);
+  });
+}
 function animCat(c,dt,t){
     const g=c.g, u=g.userData, k=1-Math.pow(0.001,dt);
     const dx=c.tx-g.position.x, dz=c.tz-g.position.z, moving=c.walk||(!c.self&&Math.hypot(dx,dz)>0.05);
@@ -1307,10 +1493,10 @@ function animCat(c,dt,t){
     else if((c.act==='churu'||c.act==='salmon') && ael<2.8) mode='eat';
     else if(c.act==='ball' && ael<1.4) mode='bat';
     else if(c.act.startsWith('scr')) mode='scratch';
-    else if(c.act.startsWith('bench')) mode='sit';
+    else if(c.act.startsWith('bench')||c.act.startsWith('tw')) mode='sit';
     let yawT=c.tyaw;
     if(mode==='sit') yawT=ITEMS[c.act].yaw;
-    else if(mode){ const ip=c.act==='wand'?wandMouse.position:c.act==='ball'?ITEMS.ball.home:ITEMS[c.act].pos; yawT=Math.atan2(-(ip.x-g.position.x),-(ip.z-g.position.z)); }
+    else if(mode){ const ip=c.act==='wand'?wandMouse.position:c.act==='ball'?ITEMS.ball.pos:ITEMS[c.act].pos; yawT=Math.atan2(-(ip.x-g.position.x),-(ip.z-g.position.z)); }
     g.rotation.y=angLerp(g.rotation.y,yawT,k);
     u.phase+=dt*(moving&&!mode?10:0);
     let rigX=0, headX=0, rigY=moving?Math.abs(Math.sin(u.phase))*0.04:Math.sin(t*2+u.phase)*0.006;
@@ -1328,7 +1514,7 @@ function animCat(c,dt,t){
     if(mode==='play'){ rigX=0.38; rigY=0.08+Math.abs(Math.sin(t*3))*0.1; }
     u.rig.rotation.x+=(rigX-u.rig.rotation.x)*0.15;
     u.rig.position.y=rigY;
-    const gy=mode==='sit'?0.5:0; g.position.y+=(gy-g.position.y)*0.2;   // 벤치 위로
+    const gy=mode==='sit'?(ITEMS[c.act].sitY||0.5):0; g.position.y+=(gy-g.position.y)*0.2;   // 벤치 위로
     u.head.rotation.x+=(headX-u.head.rotation.x)*0.2;
     u.tail.rotation.z=Math.sin(t*(moving||mode==='play'?5:2)+u.phase)*0.35;
     u.head.rotation.y=mode?0:Math.sin(t*0.7+u.phase)*0.15;
@@ -1344,6 +1530,7 @@ function frame(){
   if(entered && !light.classList.contains('on') && !gbEl.classList.contains('on')){ const mg=step(dt); bob+=dt*mg*9; } else me.walking=false;
   updateMyAct(dt,t); updateItems(dt,t);
   checkNear(); sendPresence(false);
+  updateNpcs(dt,t);
   if(myCat){ Object.assign(myCat,{tx:me.x,tz:me.z,tyaw:me.catYaw,walk:me.walking,act:myAct.k,actT0:myAct.t0}); animCat(myCat,dt,t); }
   cats.forEach(c=>animCat(c,dt,t));
   // 3인칭 카메라
