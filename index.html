@@ -519,7 +519,6 @@ const PL=12, PZ0=Z1, PZ1=Z1-26, SZ=(PZ0+PZ1)/2;   // 광장 반폭, 시작/끝 z
       l.position.set((Math.random()-.5)*0.9, 2.6+k*0.45, (Math.random()-.5)*0.9); g.add(l); }
     g.scale.setScalar(s); g.position.set(x,0,z); scene.add(g);
   }
-  [[-10.6,PZ0-7],[10.6,PZ0-7],[-9.5,PZ1+3],[9.5,PZ1+3]].forEach(([x,z])=>{ tree(x,z,1.15); OBST.push({x0:x-0.5,x1:x+0.5,z0:z-0.5,z1:z+0.5}); });
   for(let k=0;k<14;k++){ const a=k/14*Math.PI*2, tz=SZ+Math.sin(a)*24; if(tz>Z1-3) continue;   // 건물 뒤(안 보이는 곳)는 생략
     tree(Math.cos(a)*24, tz, 1.3+Math.random()*0.6); }
 
@@ -652,7 +651,34 @@ const TOWER={x:0,z:TZ};
   const t=tagSprite('캣타워 (층마다 1마리)'); t.position.set(0.35,5.95,TZ); scene.add(t);
 })();
 /* ================== 방명록 게시판 (광장 오른쪽) ================== */
-const GBX=PL-1.3, GBZ=SZ;
+const GBX=PL-0.6, GBZ=SZ, BIG_L=20, BIG_H=4.6, BIG_Y=2.65;   // 광장 한 면을 채우는 큰 판
+function nearBig(bx){ return Math.abs(me.x-bx)<5.5 && Math.abs(me.z-SZ)<BIG_L/2+0.5; }
+function signCanvas(title,sub){
+  const c=mk(2048,320), x=c.getContext('2d');
+  x.fillStyle='#3b2f2a'; const r=60; x.beginPath(); x.moveTo(r,0); x.arcTo(2048,0,2048,320,r); x.arcTo(2048,320,0,320,r); x.arcTo(0,320,0,0,r); x.arcTo(0,0,2048,0,r); x.fill();
+  x.fillStyle='#f6efe4'; x.textAlign='center'; x.textBaseline='middle';
+  x.font="700 130px 'Gowun Batang', serif"; x.fillText(title,1024,130);
+  x.font="58px 'Gowun Dodum', sans-serif"; x.fillStyle='#e3c9a6'; x.fillText(sub,1024,250);
+  return c;
+}
+function bigBoard(bx,rotY,canvas,title,sub){
+  const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0x6e4b34, roughness:.6});
+  for(let i=0;i<=5;i++){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.18,BIG_Y+BIG_H/2+0.3,0.18), wood); p.position.set(-BIG_L/2+i*BIG_L/5,(BIG_Y+BIG_H/2+0.3)/2,-0.06); g.add(p); }
+  const back=new THREE.Mesh(new THREE.BoxGeometry(BIG_L+0.4,BIG_H+0.3,0.08), wood); back.position.set(0,BIG_Y,-0.05); g.add(back);
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(BIG_L,BIG_H), new THREE.MeshBasicMaterial({map:tex(canvas)}));
+  face.position.set(0,BIG_Y,0.0); g.add(face);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(BIG_L+0.8,0.14,0.7), wood); roof.position.set(0,BIG_Y+BIG_H/2+0.3,0.12); g.add(roof);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(8.4,1.31), new THREE.MeshBasicMaterial({map:tex(signCanvas(title,sub)), transparent:true}));
+  sign.position.set(0,BIG_Y+BIG_H/2+1.15,0.2); g.add(sign);
+  const sp=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.7,0.12), wood); sp.position.set(-3,BIG_Y+BIG_H/2+0.55,0.15); g.add(sp);
+  const sp2=sp.clone(); sp2.position.x=3; g.add(sp2);
+  rebuilders.push(()=>{ sign.material.map=tex(signCanvas(title,sub)); sign.material.needsUpdate=true; });
+  g.position.set(bx,0,SZ); g.rotation.y=rotY; scene.add(g);
+  OBST.push({x0:bx-0.4,x1:bx+0.4,z0:SZ-BIG_L/2-0.3,z1:SZ+BIG_L/2+0.3});
+  return face;
+}
+const LW=4096, LH=Math.round(4096*BIG_H/BIG_L), BW=2048, BH=Math.round(LH/2);   // 그림은 4096 기준으로 그리고 2048로 줄여서 가볍게
 const NOTE_COLS=['#fff1a8','#ffd6e0','#d4f0d0','#d6e6ff','#ffe2c2','#ecdcff'];
 function wrapText(x,text,maxW,maxLines){
   const out=[]; let line='';
@@ -662,13 +688,15 @@ function wrapText(x,text,maxW,maxLines){
   return out;
 }
 function boardCanvas(list){
-  const c=mk(1024,700), x=c.getContext('2d');
-  x.fillStyle='#c9a879'; x.fillRect(0,0,1024,700);
-  for(let i=0;i<500;i++){ x.fillStyle=`rgba(120,85,50,${Math.random()*.15})`; x.fillRect(Math.random()*1024,Math.random()*700,3,3); }
-  x.fillStyle='#3b2f2a'; x.textAlign='center'; x.font="700 62px 'Gowun Batang', serif"; x.fillText('사랑이에게 남기는 말 🐾',512,86);
-  const items=list.slice(0,6);
-  if(!items.length){ x.font="40px 'Gowun Dodum', sans-serif"; x.fillStyle='#5a4636'; x.fillText('첫 번째 한마디를 남겨주세요',512,380); }
-  items.forEach((e,i)=>{ const col=i%3, row=Math.floor(i/3); drawNote(x,e,i,40+col*325,130+row*280); });
+  const c=mk(BW,BH), x=c.getContext('2d'); x.scale(BW/LW,BW/LW);
+  x.fillStyle='#c9a879'; x.fillRect(0,0,LW,LH);
+  for(let i=0;i<2500;i++){ x.fillStyle=`rgba(120,85,50,${Math.random()*.15})`; x.fillRect(Math.random()*LW,Math.random()*LH,4,4); }
+  x.textAlign='center';
+  const COLS=16, sc=0.78, cw=LW/COLS, rows=Math.floor((LH-50)/(260*sc+18));
+  const items=list.slice(0,COLS*rows);
+  if(!items.length){ x.font="60px 'Gowun Dodum', sans-serif"; x.fillStyle='#5a4636'; x.fillText('첫 번째 응원을 남겨주세요',LW/2,LH/2+40); }
+  items.forEach((e,i)=>{ const col=i%COLS, row=Math.floor(i/COLS);
+    x.save(); x.translate(col*cw+(cw-300*sc)/2, 40+row*(260*sc+18)); x.scale(sc,sc); drawNote(x,e,i,0,0); x.restore(); });
   return c;
 }
 function drawNote(x,e,i,nx,ny){
@@ -682,33 +710,8 @@ function drawNote(x,e,i,nx,ny){
   x.fillText('- '+e.name,280,232);
   x.restore();
 }
-// 건물 벽에 이어 붙는 방명록 (광장 쪽, 문 양옆) — 6번째 글부터
-function wallCanvas(list, start){
-  const c=mk(2048,600), x=c.getContext('2d');   // 투명 배경
-  list.slice(start,start+12).forEach((e,k)=>{ const col=k%6, row=Math.floor(k/6); drawNote(x,e,start+k,24+col*338,20+row*290); });
-  return c;
-}
-const gbWalls=[[-7,6],[7,18]].map(([wx,start])=>{
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(9,2.64), new THREE.MeshStandardMaterial({map:tex(wallCanvas([],0)), transparent:true, roughness:.85}));
-  m.position.set(wx,2.45,Z1-0.33); m.rotation.y=Math.PI; scene.add(m); m.userData.start=start; return m;
-});
-const gbBoard=(function(){
-  const g=new THREE.Group();
-  const wood=new THREE.MeshStandardMaterial({color:0x6e4b34, roughness:.6});
-  [-1.75,1.75].forEach(px=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(0.14,2.9,0.14), wood); p.position.set(px,1.45,0); g.add(p); });
-  const back=new THREE.Mesh(new THREE.BoxGeometry(3.5,2.4,0.08), wood); back.position.set(0,1.75,-0.03); g.add(back);
-  const face=new THREE.Mesh(new THREE.PlaneGeometry(3.3,2.25), new THREE.MeshStandardMaterial({map:tex(boardCanvas([])), roughness:.85}));
-  face.position.set(0,1.75,0.02); g.add(face);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(3.9,0.12,0.6), wood); roof.position.set(0,3.0,0.1); g.add(roof);
-  g.position.set(GBX,0,GBZ); g.rotation.y=-Math.PI/2; scene.add(g);
-  const lp=new THREE.PointLight(0xffe0b8,0.5,6,1.6); lp.position.set(GBX-1.5,2.8,GBZ); scene.add(lp);
-  OBST.push({x0:GBX-0.35,x1:GBX+0.35,z0:GBZ-1.9,z1:GBZ+1.9});
-  return face;
-})();
-function redrawBoard(){
-  gbBoard.material.map=tex(boardCanvas(gbEntries)); gbBoard.material.needsUpdate=true;
-  gbWalls.forEach(m=>{ m.material.map=tex(wallCanvas(gbEntries,m.userData.start)); m.material.needsUpdate=true; });
-}
+const gbBoard=bigBoard(GBX,-Math.PI/2,boardCanvas([]),'사랑이에게 남기는 말 🐾','응원 문구를 골라 남겨주세요');
+function redrawBoard(){ gbBoard.material.map=tex(boardCanvas(gbEntries)); gbBoard.material.needsUpdate=true; }
 let gbEntries=[];
 rebuilders.push(redrawBoard);
 
@@ -875,37 +878,22 @@ function updateItems(dt,t){
 }
 
 /* ================== 도장존 (광장 왼쪽) ================== */
-const STX=-GBX, STZ=GBZ, SB_W=3.6, SB_H=2.4;
+const STX=-GBX, STZ=GBZ, SB_TITLE=20;
 let stamps=[];
 function stampColor(c){ const f=FURS[c]||FURS[0]; return c===4?'#e79aa6':'#'+f.body.toString(16).padStart(6,'0'); }
 function stampCanvas(list){
-  const c=mk(1200,800), x=c.getContext('2d');
-  x.fillStyle='#fbf6ee'; x.fillRect(0,0,1200,800);
-  x.strokeStyle='#d8c6ad'; x.lineWidth=10; x.strokeRect(5,5,1190,790);
-  x.fillStyle='#3b2f2a'; x.textAlign='center'; x.font="700 56px 'Gowun Batang', serif"; x.fillText('발도장 존 🐾',600,72);
-  x.font="30px 'Gowun Dodum', sans-serif"; x.fillStyle='#8a776b'; x.fillText('원하는 곳을 눌러서 도장을 꾹!',600,112);
-  x.strokeStyle='#e6d9c6'; x.lineWidth=2; x.beginPath(); x.moveTo(60,134); x.lineTo(1140,134); x.stroke();
+  const c=mk(BW,BH), x=c.getContext('2d'); x.scale(BW/LW,BW/LW);
+  x.fillStyle='#fbf6ee'; x.fillRect(0,0,LW,LH);
+  x.strokeStyle='#d8c6ad'; x.lineWidth=16; x.strokeRect(8,8,LW-16,LH-16);
   list.slice().reverse().forEach(s=>{
-    const px=s.x*1200, py=(1-s.y)*800;
+    const px=s.x*LW, py=(1-s.y)*LH;
     x.save(); x.translate(px,py); x.rotate(((s.ts%13)-6)*0.05);
-    drawPaw(x,0,-6,1.05,stampColor(s.c)); x.restore();
-    x.font="20px 'Gowun Dodum', sans-serif"; x.fillStyle='rgba(59,47,42,.85)'; x.textAlign='center'; x.fillText(s.n,px,py+44);
+    drawPaw(x,0,-6,1.3,stampColor(s.c)); x.restore();
+    x.font="24px 'Gowun Dodum', sans-serif"; x.fillStyle='rgba(59,47,42,.85)'; x.textAlign='center'; x.fillText(s.n,px,py+52);
   });
   return c;
 }
-const stampBoard=(function(){
-  const g=new THREE.Group();
-  const wood=new THREE.MeshStandardMaterial({color:0x6e4b34, roughness:.6});
-  [-1.95,1.95].forEach(px=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(0.14,2.9,0.14), wood); p.position.set(px,1.45,0); g.add(p); });
-  const back=new THREE.Mesh(new THREE.BoxGeometry(3.8,2.6,0.08), wood); back.position.set(0,1.7,-0.03); g.add(back);
-  const face=new THREE.Mesh(new THREE.PlaneGeometry(SB_W,SB_H), new THREE.MeshStandardMaterial({map:tex(stampCanvas([])), roughness:.9}));
-  face.position.set(0,1.7,0.02); g.add(face);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(4.2,0.12,0.6), wood); roof.position.set(0,3.0,0.1); g.add(roof);
-  g.position.set(STX,0,STZ); g.rotation.y=Math.PI/2; scene.add(g);
-  const lp=new THREE.PointLight(0xffe0b8,0.5,6,1.6); lp.position.set(STX+1.5,2.8,STZ); scene.add(lp);
-  OBST.push({x0:STX-0.35,x1:STX+0.35,z0:STZ-2.1,z1:STZ+2.1});
-  return face;
-})();
+const stampBoard=bigBoard(STX,Math.PI/2,stampCanvas([]),'발도장 존 🐾','판 아무 데나 눌러서 도장을 꾹!');
 function redrawStamps(){ stampBoard.material.map=tex(stampCanvas(stamps)); stampBoard.material.needsUpdate=true; }
 rebuilders.push(redrawStamps);
 
@@ -1002,7 +990,7 @@ const ray=new THREE.Raycaster(), v2=new THREE.Vector2();
 function tap(x,y){
   v2.set(x/innerWidth*2-1, -(y/innerHeight)*2+1); ray.setFromCamera(v2,camera);
   const sh=ray.intersectObject(stampBoard)[0];
-  if(sh && sh.distance<10 && sh.uv){ addStamp(sh.uv.x, sh.uv.y); return; }
+  if(sh && sh.distance<16 && sh.uv){ addStamp(sh.uv.x, sh.uv.y); return; }
   const hit=ray.intersectObjects(photoMeshes)[0];
   if(hit && hit.distance<12) openLight(hit.object.userData.index);
 }
@@ -1054,8 +1042,8 @@ function checkNear(){
   for(const k in ITEMS){ if(ITEMS[k].hidden) continue; const p=ITEMS[k].pos, d=Math.hypot(p.x-me.x,p.z-me.z); if(d<ibd){ ibd=d; ib=k; } }
   if(STAY[myAct.k]) ib=myAct.k.startsWith('tw')?'tower':myAct.k;
   if(ib) best=ib;
-  if(best===-1 && Math.hypot(me.x-GBX, me.z-GBZ)<4.8) best=-8;   // 방명록 근처
-  if(best===-1 && Math.hypot(me.x-STX, me.z-STZ)<4.8) best=-7;   // 도장존 근처
+  if(best===-1 && nearBig(GBX)) best=-8;   // 방명록 근처
+  if(best===-1 && nearBig(STX)) best=-7;   // 도장존 근처
   if(best===-1 && Math.hypot(me.x, me.z-SZ)<6.5) best=-9;   // 동상 근처
   if(best!==nearIdx){
     nearIdx=best;
@@ -1307,7 +1295,7 @@ function renderGB(){
 }
 let lastStamp=0;
 async function addStamp(u,v){
-  if(v>1-150/800 || u<0.04 || u>0.96 || v<0.06){ return; }   // 제목·가장자리 제외
+  if(v>1-(SB_TITLE+20)/LH || u<0.01 || u>0.99 || v<0.05){ return; }   // 제목·가장자리 제외
   if(Date.now()-lastStamp<2500){ showToast('조금만 있다가 다시 찍어주세요'); return; }
   lastStamp=Date.now();
   const s={x:+u.toFixed(4), y:+v.toFixed(4), n:me.name, c:me.fur, ts:Date.now()};
