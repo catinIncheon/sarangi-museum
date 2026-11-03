@@ -102,6 +102,10 @@
   .diary .ditem img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover}
   .diary .dd{font-family:'Gowun Batang',serif;font-weight:700;color:#3b2f2a;font-size:17px;margin-top:10px;text-align:center}
   .diary .dn{color:#6f5d50;font-size:14px;margin-top:4px;text-align:center;line-height:1.5}
+  .diary .welcome{padding:22px 16px}
+  .diary .welcome .dd{margin:0 0 14px;font-size:18px}
+  .diary .welcome .dn{font-size:15px;margin-top:2px}
+  .diary .welcome .sig{margin-top:14px;font-family:'Gowun Batang',serif;color:#8a776b}
   .light img{max-width:100%;max-height:66vh;border:10px solid #fbf7f0;box-shadow:0 10px 40px rgba(0,0,0,.5)}
   .light .t{font-family:'Gowun Batang',serif;color:#fbf5ec;font-size:20px;margin-top:20px}
   .light .s{color:#e1d3c3;font-size:14px;margin-top:8px;line-height:1.6;text-align:center;max-width:420px}
@@ -152,7 +156,7 @@
 </div>
 <div class="diary" id="diary">
   <div class="dbox">
-    <div class="dh"><b>오늘의 사랑이 🐾</b><button id="dclose">닫기</button></div>
+    <div class="dh"><b id="dtitle">오늘의 사랑이 🐾</b><button id="dclose">닫기</button></div>
     <div class="dlist" id="dlist"></div>
   </div>
 </div>
@@ -275,6 +279,24 @@ const DIARY = [
   { date:"11월 3일", day:"화", src:"d1103.jpg", note:"이불 폭 덮고 포근하게" },
 ];
 
+/* ================== 입구 안내판 (처음 서는 곳 앞) ================== */
+const WELCOME = {
+  title: "사랑이 전시관에 와줘서 고마워요",
+  lines: [
+    "사랑이는 지금 많이 아파요.",
+    "암 진단을 받고 하루하루 힘내서 지내고 있어요.",
+    "",
+    "사랑이와 함께한 날들을 오래 기억하고 싶어서",
+    "이 작은 전시관을 만들었어요.",
+    "광장 캣타워 옆 '오늘의 사랑이' 게시판에",
+    "사랑이 소식을 일기처럼 계속 올릴게요.",
+    "",
+    "사랑이를 응원하는 마음으로 천천히 둘러봐 주세요.",
+    "와줘서 정말 고마워요 🐾",
+  ],
+  sign: "사랑이 가족 드림",
+};
+
 const MUSEUM = { name:"사랑이", sub:"함께한 모든 날이 선물이었어" };
 
 const ADJ = ['말랑한','포근한','졸린','수줍은','용감한','반짝이는','동글동글한','느긋한','상냥한','배고픈',
@@ -396,6 +418,35 @@ function bench(z){
   OBST.push({x0:-0.45,x1:0.45,z0:z-1.5,z1:z+1.5});
 }
 bench(-10); bench(-26);
+
+// 입구 안내판: 처음 서는 곳 바로 앞
+const WSZ=Z0-4.2;
+function welcomeCanvas(){
+  const c=mk(1600,1200), x=c.getContext('2d');
+  x.fillStyle='#fbf6ee'; x.fillRect(0,0,1600,1200);
+  x.strokeStyle='#d9c3a5'; x.lineWidth=14; x.strokeRect(30,30,1540,1140);
+  drawPaw(x,800,150,1.6,'#e7b3a9');
+  x.fillStyle='#3b2f2a'; x.textAlign='center'; x.textBaseline='alphabetic';
+  x.font="700 84px 'Gowun Batang', serif"; x.fillText(WELCOME.title,800,300);
+  x.fillStyle='#d9c3a5'; x.fillRect(560,340,480,4);
+  x.font="50px 'Gowun Dodum', sans-serif"; x.fillStyle='#4a3b33';
+  let y=430; WELCOME.lines.forEach(l=>{ if(l) x.fillText(l,800,y); y+= l?66:34; });
+  x.font="700 46px 'Gowun Batang', serif"; x.fillStyle='#8a776b'; x.fillText('— '+WELCOME.sign,800,y+40);
+  return c;
+}
+const welcomeFace=(function(){
+  const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0x6e4b34, roughness:.55});
+  [-1.25,1.25].forEach(px=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(0.1,2.75,0.1), wood); p.position.set(px,1.37,0); g.add(p); });
+  const back=new THREE.Mesh(new THREE.BoxGeometry(2.6,1.98,0.07), wood); back.position.set(0,1.62,-0.04); g.add(back);
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(2.44,1.83), new THREE.MeshStandardMaterial({map:tex(welcomeCanvas()), roughness:.9}));
+  face.position.set(0,1.62,0.01); g.add(face);
+  const foot=new THREE.Mesh(new THREE.BoxGeometry(2.8,0.08,0.5), wood); foot.position.y=0.04; g.add(foot);
+  g.position.set(0,0,WSZ); scene.add(g);
+  OBST.push({x0:-1.4,x1:1.4,z0:WSZ-0.3,z1:WSZ+0.3});
+  return face;
+})();
+rebuilders.push(()=>{ welcomeFace.material.map=tex(welcomeCanvas()); welcomeFace.material.needsUpdate=true; });
 
 // 화분
 function plant(x,z){
@@ -1174,6 +1225,7 @@ function checkNear(){
   for(const k in ITEMS){ if(ITEMS[k].hidden) continue; const p=ITEMS[k].pos, d=Math.hypot(p.x-me.x,p.z-me.z); if(d<ibd){ ibd=d; ib=k; } }
   if(STAY[myAct.k]) ib=myAct.k.startsWith('tw')?'tower':myAct.k;
   if(ib) best=ib;
+  if(Math.abs(me.x)<2.2 && me.z>WSZ && me.z<WSZ+4.2 && (typeof best!=='string')) best=-5;   // 입구 안내판
   if(best===-1 && Math.abs(me.x-DX)<2.6 && me.z>DZ && me.z<DZ+3.6) best=-6;   // 사랑이 일기 근처
   if(best===-1 && nearBig(GBX)) best=-8;   // 방명록 근처
   if(best===-1 && nearBig(STX)) best=-7;   // 도장존 근처
@@ -1201,6 +1253,7 @@ function checkNear(){
       document.getElementById('ns').textContent= STAY[best] ? `${it.sub} · 지금 ${stayPlayers(best)}마리` : it.sub;
       btn.textContent= STAY[best]&&myAct.k===best ? (best==='wand'?'그만 놀기':best==='knead'?'그만하기':it.sit?'일어나기':'그만 긁기') : it.btn;
       if(myAct.k===best) document.getElementById('ns').textContent='조이스틱을 밀면 바로 움직일 수 있어요'; btn.style.display=''; near.classList.add('on'); }
+    else if(best===-5){ document.getElementById('nt').textContent='전시관 안내'; document.getElementById('ns').textContent='사랑이 전시관을 만든 이유'; btn.textContent='읽기'; btn.style.display=''; near.classList.add('on'); }
     else if(best===-6){ document.getElementById('nt').textContent='오늘의 사랑이'; document.getElementById('ns').textContent=`${DIARY[DIARY.length-1].date} 소식까지 올라와 있어요`; btn.textContent='일기 보기'; btn.style.display=''; near.classList.add('on'); }
     else if(best===-7){ document.getElementById('nt').textContent='발도장 존'; document.getElementById('ns').textContent='판을 눌러서 도장을 꾹 찍어보세요'; btn.style.display='none'; near.classList.add('on'); }
     else if(best>=0){ near.classList.remove('on'); }
@@ -1211,7 +1264,7 @@ function checkNear(){
 }
 document.getElementById('nbtn').onclick=()=>{
   if(typeof nearIdx==='string') doItem(nearIdx);
-  else if(nearIdx>=0) openLight(nearIdx); else if(nearIdx===-8) openGB(); else if(nearIdx===-6) openDiary();
+  else if(nearIdx>=0) openLight(nearIdx); else if(nearIdx===-8) openGB(); else if(nearIdx===-6) openDiary(); else if(nearIdx===-5) openWelcome();
 };
 
 const light=document.getElementById('light');
@@ -1227,6 +1280,7 @@ light.onclick=closeLight;
 const diaryEl=document.getElementById('diary');
 function openDiary(){
   const box=document.getElementById('dlist'); box.textContent='';
+  document.getElementById('dtitle').textContent='오늘의 사랑이 🐾';
   DIARY.slice().reverse().forEach(e=>{
     const it=document.createElement('div'); it.className='ditem';
     const im=document.createElement('img'); im.src=e.src; im.alt=e.date; it.appendChild(im);
@@ -1235,6 +1289,15 @@ function openDiary(){
     box.appendChild(it);
   });
   diaryEl.classList.add('on'); box.scrollTop=0;
+}
+function openWelcome(){
+  const box=document.getElementById('dlist'); box.textContent='';
+  document.getElementById('dtitle').textContent='전시관 안내 🐾';
+  const it=document.createElement('div'); it.className='ditem welcome';
+  const t=document.createElement('div'); t.className='dd'; t.textContent=WELCOME.title; it.appendChild(t);
+  WELCOME.lines.forEach(l=>{ const p=document.createElement('div'); p.className='dn'; p.textContent=l||'\u00a0'; it.appendChild(p); });
+  const sg=document.createElement('div'); sg.className='dn sig'; sg.textContent='— '+WELCOME.sign; it.appendChild(sg);
+  box.appendChild(it); diaryEl.classList.add('on'); box.scrollTop=0;
 }
 function closeDiary(){ diaryEl.classList.remove('on'); }
 document.getElementById('dclose').onclick=closeDiary;
