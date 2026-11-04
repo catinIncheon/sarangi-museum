@@ -102,6 +102,7 @@
   .diary .ditem img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover}
   .diary .dd{font-family:'Gowun Batang',serif;font-weight:700;color:#3b2f2a;font-size:17px;margin-top:10px;text-align:center}
   .diary .dn{color:#6f5d50;font-size:14px;margin-top:4px;text-align:center;line-height:1.5}
+  .diary .dstar{aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:64px;background:linear-gradient(#2d3561,#6b5b95)}
   .diary .welcome{padding:22px 16px}
   .diary .welcome .dd{margin:0 0 14px;font-size:18px}
   .diary .welcome .dn{font-size:15px;margin-top:2px}
@@ -277,21 +278,22 @@ const PHOTOS = [
 const DIARY = [
   { date:"11월 2일", day:"월", src:"d1102.jpg", note:"분홍 방석 위에서 쉬는 중" },
   { date:"11월 3일", day:"화", src:"d1103.jpg", note:"이불 폭 덮고 포근하게" },
+  { date:"11월 4일", day:"수", src:"", note:"가족 곁에서 고양이별로 떠났어요" },
 ];
 
 /* ================== 입구 안내판 (처음 서는 곳 앞) ================== */
 const WELCOME = {
   title: "사랑이 전시관에 와줘서 고마워요",
   lines: [
-    "사랑이는 지금 많이 아파요.",
-    "암 진단을 받고 하루하루 힘내서 지내고 있어요.",
+    "사랑이는 오랫동안 아픈 몸으로 힘내주다가",
+    "2026년 11월 4일, 가족 곁에서 고양이별로 떠났어요.",
+    "",
+    "사랑아, 그동안 우리를 사랑해줘서 정말 고마워.",
+    "우리는 앞으로도 계속 너를 사랑할 거야.",
     "",
     "사랑이와 함께한 날들을 오래 기억하고 싶어서",
     "이 작은 전시관을 만들었어요.",
-    "광장 캣타워 옆 '오늘의 사랑이' 게시판에",
-    "사랑이 소식을 일기처럼 계속 올릴게요.",
-    "",
-    "사랑이를 응원하는 마음으로 천천히 둘러봐 주세요.",
+    "광장 캣타워 옆 분향소에서 사랑이에게 인사해 주세요.",
     "와줘서 정말 고마워요 🐾",
   ],
   sign: "사랑이 가족 드림",
@@ -304,8 +306,8 @@ const ADJ = ['말랑한','포근한','졸린','수줍은','용감한','반짝이
 const VERB = ['꾹꾹이','뒹굴이','하품쟁이','골골이','기지개냥','낮잠꾼','식빵굽냥','꼬리흔들냥','깡총이','숨바꼭질냥',
               '우다다냥','냥냥펀치','그루밍냥','쭉쭉이','츄르먹냥','창밖구경냥','박스점령냥','발라당냥','꾸벅이','야옹이'];
 const CHEER = ['사랑아, 오늘도 정말 고마워','사랑이는 세상에서 제일 예쁜 고양이야','사랑아 많이많이 사랑해','사랑이 덕분에 늘 행복했어',
-  '사랑아 너무 귀여워!','사랑이 힘내! 다들 응원하고 있어','사랑아 꾹꾹이 고마웠어','사랑이의 왕눈이 최고야',
-  '햇살 같은 사랑이','사랑아 넌 우리의 보물이야','사랑이 츄르 많이 먹자','사랑아, 함께해서 고마워',
+  '사랑아 너무 귀여워!','사랑아, 다들 너를 기억하고 있어','사랑아 꾹꾹이 고마웠어','사랑이의 왕눈이 최고야',
+  '햇살 같은 사랑이','사랑아 넌 우리의 보물이야','고양이별에서 츄르 많이 먹어','사랑아, 함께해서 고마워',
   '사랑이 골골송 또 듣고 싶다','사랑아 늘 곁에 있을게','사랑이 꽃길만 걷자','오늘도 포근하게 푹 자렴 사랑아',
   '사랑이 발바닥 젤리 최고','사랑아 넌 정말 특별한 고양이야','사랑이를 만나서 다행이야','사랑해 사랑아, 언제까지나'];
 const NICE = ['오늘도 수고했어','너는 충분히 잘하고 있어','사랑해, 고마워','같이 있어서 좋아','천천히 가도 괜찮아',
@@ -779,14 +781,21 @@ function cushionCanvas(){
 
 /* ================== 사랑이 일기 게시판 (캣타워 왼쪽) ================== */
 const DX=-4.6, DZ=TZ+0.15;
-const diaryImgs=DIARY.map(e=>{ const im=new Image(); im.onload=()=>redrawDiary(); im.src=e.src; return im; });
+const diaryImgs=DIARY.map(e=>{ const im=new Image(); im.onload=()=>redrawDiary(); if(e.src) im.src=e.src; return im; });
+function drawStarCard(x,X,Y,w,h){
+  const g=x.createLinearGradient(X,Y,X,Y+h); g.addColorStop(0,'#2d3561'); g.addColorStop(1,'#6b5b95'); x.fillStyle=g; x.fillRect(X,Y,w,h);
+  for(let i=0;i<60;i++){ x.fillStyle=`rgba(255,255,255,${0.3+Math.random()*0.6})`; x.beginPath(); x.arc(X+Math.random()*w,Y+Math.random()*h,1+Math.random()*2.5,0,Math.PI*2); x.fill(); }
+  x.save(); x.translate(X+w/2,Y+h/2-10); x.fillStyle='#ffe9a8'; x.beginPath();
+  for(let i=0;i<10;i++){ const r=i%2?38:90, a=-Math.PI/2+i*Math.PI/5; x.lineTo(Math.cos(a)*r,Math.sin(a)*r); } x.closePath(); x.fill(); x.restore();
+  drawPaw(x,X+w/2,Y+h/2-14,0.9,'rgba(120,90,60,.55)');
+}
 function diaryCanvas(){
   const c=mk(2048,1500), x=c.getContext('2d');
   x.fillStyle='#f6eee2'; x.fillRect(0,0,2048,1500);
   for(let i=0;i<900;i++){ x.fillStyle=`rgba(150,115,80,${Math.random()*.06})`; x.fillRect(Math.random()*2048,Math.random()*1500,4,4); }
   x.fillStyle='#3b2f2a'; x.textAlign='center'; x.textBaseline='alphabetic';
-  x.font="700 130px 'Gowun Batang', serif"; x.fillText('오늘의 사랑이 🐾',1024,165);
-  x.font="62px 'Gowun Dodum', sans-serif"; x.fillStyle='#8a776b'; x.fillText('하루하루 사랑이 소식을 남겨요',1024,250);
+  x.font="700 130px 'Gowun Batang', serif"; x.fillText('사랑아, 고마워 🤍',1024,165);
+  x.font="62px 'Gowun Dodum', sans-serif"; x.fillStyle='#8a776b'; x.fillText('사랑이의 마지막 날들',1024,250);
   const list=DIARY.map((e,i)=>({e,im:diaryImgs[i]})).reverse().slice(0,3);   // 최신이 왼쪽
   const n=list.length, gap=70, sc=Math.min(1.25,(1860-(n-1)*gap)/n/560), PWd=560, x0=1024-(n*PWd*sc+(n-1)*gap)/2;
   list.forEach(({e,im},k)=>{
@@ -797,13 +806,13 @@ function diaryCanvas(){
     const iw=PWd-50, ih=Math.round(iw*0.75);
     if(im.complete && im.naturalWidth){ const r=Math.max(iw/im.naturalWidth, ih/im.naturalHeight), w=im.naturalWidth*r, h=im.naturalHeight*r;
       x.save(); x.beginPath(); x.rect(25,25,iw,ih); x.clip(); x.drawImage(im,25+(iw-w)/2,25+(ih-h)/2,w,h); x.restore(); }
+    else if(!e.src) drawStarCard(x,25,25,iw,ih);
     else { x.fillStyle='#eadfce'; x.fillRect(25,25,iw,ih); }
     x.fillStyle='#e58fbf'; x.fillRect(PWd/2-70,-18,140,40);   // 마스킹테이프
     x.textAlign='center'; x.fillStyle='#3b2f2a'; x.font="700 70px 'Gowun Batang', serif";
     x.fillText(`${e.date} (${e.day})`, PWd/2, ih+130);
     x.font="44px 'Gowun Dodum', sans-serif"; x.fillStyle='#6f5d50';
     wrapText(x,e.note||'',PWd-70,3).forEach((ln,j)=>x.fillText(ln,PWd/2,ih+215+j*58));
-    if(k===0){ x.fillStyle='#c0392b'; x.font="700 40px 'Gowun Dodum', sans-serif"; x.textAlign='left'; x.fillText('NEW',28,ih+70); }
     x.restore();
   });
   return c;
@@ -811,18 +820,125 @@ function diaryCanvas(){
 const diaryFace=(function(){
   const g=new THREE.Group();
   const wood=new THREE.MeshStandardMaterial({color:0x6e4b34, roughness:.6});
-  [-2.2,2.2].forEach(px=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(0.13,3.75,0.13), wood); p.position.set(px,1.87,0); g.add(p); });
-  const back=new THREE.Mesh(new THREE.BoxGeometry(4.4,3.2,0.08), wood); back.position.set(0,2.1,-0.04); g.add(back);
+  [-2.2,2.2].forEach(px=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(0.13,4.45,0.13), wood); p.position.set(px,2.22,0); g.add(p); });
+  const back=new THREE.Mesh(new THREE.BoxGeometry(4.4,3.2,0.08), wood); back.position.set(0,2.8,-0.04); g.add(back);
   const face=new THREE.Mesh(new THREE.PlaneGeometry(4.2,3.08), new THREE.MeshStandardMaterial({map:tex(diaryCanvas()), roughness:.9}));
-  face.position.set(0,2.1,0.01); g.add(face);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(4.8,0.12,0.5), wood); roof.position.set(0,3.78,0.08); g.add(roof);
+  face.position.set(0,2.8,0.01); g.add(face);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(4.8,0.12,0.5), wood); roof.position.set(0,4.48,0.08); g.add(roof);
   g.position.set(DX,0,DZ); scene.add(g);
-  const lp=new THREE.PointLight(0xffe0b8,0.45,6,1.6); lp.position.set(DX,3.0,DZ+1.4); scene.add(lp);
-  OBST.push({x0:DX-2.3,x1:DX+2.3,z0:DZ-0.2,z1:DZ+0.2});
+  const lp=new THREE.PointLight(0xffe0b8,0.45,6,1.6); lp.position.set(DX,3.6,DZ+1.6); scene.add(lp);
+  OBST.push({x0:DX-2.3,x1:DX+2.3,z0:DZ-0.2,z1:DZ+1.15});
   return face;
 })();
 function redrawDiary(){ diaryFace.material.map=tex(diaryCanvas()); diaryFace.material.needsUpdate=true; }
 rebuilders.push(redrawDiary);
+rebuilders.push(()=>{ if(altarFront){ altarFront.map=tex(altarFrontCanvas()); altarFront.needsUpdate=true; } });
+
+/* ================== 사랑이 분향소 (일기 게시판 앞) ================== */
+const AZ=DZ+0.62, AH=0.86;   // 제단 앞뒤 위치, 높이
+const offerings=[]; let offerN=0;
+const flames=[], smokes=[];
+let mumWhite, mumYellow, stemM;
+function mum(scale,mat){
+  const g=new THREE.Group(), pm=mat||mumWhite;
+  for(let i=0;i<9;i++){ const a=i/9*Math.PI*2; const p=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),pm); p.scale.set(1,0.55,1.7); p.position.set(Math.cos(a)*0.045,0,Math.sin(a)*0.045); p.rotation.y=-a; g.add(p); }
+  const c=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),pm); c.position.y=0.02; g.add(c);
+  const y=new THREE.Mesh(new THREE.SphereGeometry(0.018,6,5),mumYellow); y.position.y=0.04; g.add(y);
+  g.scale.setScalar(scale); return g;
+}
+function altarFrontCanvas(){
+  const c=mk(1024,256), x=c.getContext('2d');
+  x.fillStyle='#f7f4ef'; x.fillRect(0,0,1024,256);
+  x.fillStyle='#3b2f2a'; x.textAlign='center'; x.textBaseline='middle';
+  x.font="700 92px 'Gowun Batang', serif"; x.fillText('사랑이',512,96);
+  x.font="44px 'Gowun Dodum', sans-serif"; x.fillStyle='#6f5d50'; x.fillText('2026. 11. 4.  고양이별로 떠난 날',512,186);
+  return c;
+}
+let altarFront;
+(function(){
+  mumWhite=new THREE.MeshStandardMaterial({color:0xfbfaf6, roughness:.8});
+  mumYellow=new THREE.MeshStandardMaterial({color:0xf2d36b, roughness:.7});
+  stemM=new THREE.MeshStandardMaterial({color:0x5f7d4f, roughness:.8});
+  const cloth=new THREE.MeshStandardMaterial({color:0xf4f1ec, roughness:.95});
+  const black=new THREE.MeshStandardMaterial({color:0x1d1a19, roughness:.6});
+  const brass=new THREE.MeshStandardMaterial({color:0xb08d57, roughness:.35, metalness:.6});
+  const g=new THREE.Group();
+  // 제단
+  altarFront=new THREE.MeshStandardMaterial({map:tex(altarFrontCanvas()), roughness:.95});
+  const tb=new THREE.Mesh(new THREE.BoxGeometry(3.0,AH,0.8), [cloth,cloth,cloth,cloth,altarFront,cloth]); tb.position.y=AH/2; g.add(tb);
+  const edge=new THREE.Mesh(new THREE.BoxGeometry(3.04,0.03,0.84), black); edge.position.y=AH+0.015; g.add(edge);
+  // 유골함 (하얀 도자기 + 금색 띠) 과 주변 꽃
+  const porcelain=new THREE.MeshStandardMaterial({color:0xf6f3ee, roughness:.25, metalness:.05});
+  const gold=new THREE.MeshStandardMaterial({color:0xc9a45c, roughness:.3, metalness:.7});
+  const silk=new THREE.MeshStandardMaterial({color:0xefe6da, roughness:.6});
+  const UZ=-0.12, UY=0.05;
+  const ug=new THREE.Group(); ug.position.set(0,AH,UZ); ug.scale.setScalar(1.5); g.add(ug);
+  const pad=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.27,0.05,32), silk); pad.position.set(0,0.025,0); ug.add(pad);
+  const prof=[[0,0],[0.15,0],[0.17,0.02],[0.2,0.1],[0.215,0.2],[0.21,0.3],[0.19,0.37],[0.16,0.41],[0.15,0.43],[0,0.43]].map(([r,y])=>new THREE.Vector2(r,y));
+  const urn=new THREE.Mesh(new THREE.LatheGeometry(prof,40), porcelain); urn.position.set(0,UY,0); ug.add(urn);
+  [0.06,0.33].forEach(by=>{ const r=by<0.1?0.19:0.205; const band=new THREE.Mesh(new THREE.TorusGeometry(r,0.006,6,40), gold); band.rotation.x=Math.PI/2; band.position.set(0,UY+by,0); ug.add(band); });
+  const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.165,0.04,32), porcelain); lid.position.set(0,UY+0.45,0); ug.add(lid);
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(0.14,28,10,0,Math.PI*2,0,Math.PI/2), porcelain); dome.scale.y=0.4; dome.position.set(0,UY+0.47,0); ug.add(dome);
+  const knob=new THREE.Mesh(new THREE.SphereGeometry(0.03,14,10), gold); knob.position.set(0,UY+0.54,0); ug.add(knob);
+  // 앞면 발바닥 무늬 + 이름
+  const lc=mk(256,256), lx=lc.getContext('2d');
+  drawPaw(lx,128,96,1.6,'#c9a45c');
+  lx.fillStyle='#8a6a3e'; lx.textAlign='center'; lx.font="700 54px 'Gowun Batang', serif"; lx.fillText('사랑이',128,214);
+  const lab=new THREE.Mesh(new THREE.PlaneGeometry(0.17,0.17), new THREE.MeshBasicMaterial({map:tex(lc), transparent:true, depthWrite:false}));
+  lab.position.set(0,UY+0.2,0.217); ug.add(lab);
+  // 유골함 둘레 꽃
+  const pinkM=new THREE.MeshStandardMaterial({color:0xf4c6d2, roughness:.8});
+  const lilacM=new THREE.MeshStandardMaterial({color:0xdcd0ee, roughness:.8});
+  const leafM2=new THREE.MeshStandardMaterial({color:0x6f9152, roughness:.85});
+  for(let i=0;i<18;i++){
+    const a=i/18*Math.PI*2, r=0.42+(i%2)*0.08;
+    if(Math.cos(a)>0.8) continue;   // 앞쪽은 향로 자리
+    const m=mum(i%2?1.15:1.35, [mumWhite,mumWhite,pinkM,mumWhite,lilacM][i%5]);
+    m.position.set(Math.sin(a)*r, AH+0.06+(i%2)*0.03, UZ+Math.cos(a)*r*0.85); g.add(m);
+    if(i%3===0){ const lf=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,6), leafM2); lf.scale.set(1.6,0.35,0.8); lf.rotation.y=a; lf.position.set(Math.sin(a+0.15)*(r+0.06), AH+0.04, UZ+Math.cos(a+0.15)*(r+0.06)*0.85); g.add(lf); }
+  }
+  // 뒤쪽 꽃바구니
+  for(let i=0;i<11;i++){ const m=mum(1.5, i%4===1?pinkM:mumWhite); m.position.set(-0.6+i*0.12, AH+0.14+Math.sin(i/10*Math.PI)*0.25, UZ-0.33); m.rotation.x=0.9; g.add(m); }
+  // 촛대
+  [-0.85,0.85].forEach(cx=>{
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.09,0.06,16), brass); st.position.set(cx,AH+0.03,0.1); g.add(st);
+    const cd=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.3,14), cloth); cd.position.set(cx,AH+0.21,0.1); g.add(cd);
+    const fl=new THREE.Mesh(new THREE.ConeGeometry(0.022,0.08,10), new THREE.MeshBasicMaterial({color:0xffc46b})); fl.position.set(cx,AH+0.41,0.1); g.add(fl); flames.push(fl);
+  });
+  // 향로 + 향
+  const bowl=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.08,0.09,18), brass); bowl.position.set(0,AH+0.045,0.33); g.add(bowl);
+  [-0.03,0,0.03].forEach((ix,i)=>{ const sk=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.26,4), new THREE.MeshStandardMaterial({color:0x8a5a3c})); sk.position.set(ix,AH+0.19,0.33); sk.rotation.z=(i-1)*0.12; g.add(sk);
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(0.007,6,4), new THREE.MeshBasicMaterial({color:0xff6a3d})); tip.position.set(ix+(i-1)*-0.015,AH+0.32,0.33); g.add(tip); });
+  const sc=mk(64,64), sx=sc.getContext('2d'); const sg=sx.createRadialGradient(32,32,2,32,32,30); sg.addColorStop(0,'rgba(240,240,240,.55)'); sg.addColorStop(1,'rgba(240,240,240,0)'); sx.fillStyle=sg; sx.fillRect(0,0,64,64);
+  const smt=tex(sc);
+  for(let i=0;i<7;i++){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:smt, transparent:true, depthWrite:false})); sp.userData.o=i/7; g.add(sp); smokes.push(sp); }
+  // 양옆 국화 화환
+  [-1.9,1.9].forEach(wx=>{
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,1.4,6), new THREE.MeshStandardMaterial({color:0x5a4031})); pole.position.set(wx,0.7,0.05); g.add(pole);
+    for(let r=0;r<3;r++) for(let i=0;i<10;i++){ const a=i/10*Math.PI*2, m=mum(1.5); m.position.set(wx+Math.cos(a)*(0.16+r*0.12),1.55+Math.sin(a)*(0.16+r*0.12),0.08-r*0.01); m.rotation.x=Math.PI/2; g.add(m); }
+    const c=mum(1.8); c.position.set(wx,1.55,0.1); c.rotation.x=Math.PI/2; g.add(c);
+    const rib=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.01), new THREE.MeshStandardMaterial({color:0xf7f4ef})); rib.position.set(wx,0.95,0.12); g.add(rib);
+  });
+  g.position.set(DX,0,AZ); scene.add(g);
+  const cl=new THREE.PointLight(0xffc98a,0.55,4.5,1.8); cl.position.set(DX,AH+0.7,AZ+0.5); scene.add(cl); flames.light=cl;
+  g.userData.root=true; window.__altar=g;
+})();
+// 헌화: 제단 앞쪽에 국화가 한 송이씩 놓여요 (최대 16송이, 넘치면 오래된 것부터)
+function addOffering(){
+  const g=window.__altar; if(!g) return;
+  const i=offerN++%16, col=i%8, row=Math.floor(i/8);
+  let f=offerings[i];
+  if(!f){ f=new THREE.Group(); const st=new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.3,5), stemM); st.rotation.z=Math.PI/2; st.position.x=0.13; f.add(st); const m=mum(1.0); m.rotation.z=Math.PI/2; f.add(m); g.add(f); offerings[i]=f; }
+  f.position.set(-1.3+col*0.12+row*0.06, AH+0.04, 0.3-row*0.02); f.rotation.y=-0.5+((i*37)%10)*0.1;
+  f.scale.setScalar(0.01); f.userData.t=0;
+}
+function updateAltar(dt,t){
+  flames.forEach((f,i)=>{ const k=1+Math.sin(t*13+i*2)*0.12+Math.sin(t*23+i)*0.06; f.scale.set(1,k,1); });
+  if(flames.light) flames.light.intensity=0.5+Math.sin(t*11)*0.05+Math.sin(t*17)*0.04;
+  smokes.forEach(sp=>{ const u=(t*0.18+sp.userData.o)%1; sp.position.set(Math.sin(u*7+sp.userData.o*9)*0.05*u, AH+0.33+u*0.9, 0.33); sp.scale.setScalar(0.06+u*0.28); sp.material.opacity=(1-u)*0.6; });
+  offerings.forEach(f=>{ if(f && f.userData.t<1){ f.userData.t=Math.min(1,f.userData.t+dt*2.5); f.scale.setScalar(f.userData.t); } });
+}
+
 /* ================== 방명록 게시판 (광장 오른쪽) ================== */
 const GBX=PL-0.6, GBZ=SZ, BIG_L=20, BIG_H=4.6, BIG_Y=2.65;   // 광장 한 면을 채우는 큰 판
 function nearBig(bx){ return Math.abs(me.x-bx)<5.5 && Math.abs(me.z-SZ)<BIG_L/2+0.5; }
@@ -1018,6 +1134,9 @@ ITEMS.tower={pos:TOWER_STAND.clone(), title:'캣타워', sub:'원하는 층을 �
 STAY.knead=KNEAD_X.map(x=>new THREE.Vector3(x,0,KZ+0.05));
 ITEMS.knead={pos:new THREE.Vector3(KX,0.3,KZ), title:'꾹꾹이 방석', sub:'방석마다 한 마리씩 꾹꾹이 할 수 있어요', btn:'꾹꾹이',
   yaw:Math.PI, sit:true, sitY:KH, stand:KNEAD_X.map(x=>new THREE.Vector3(x,0,KZ+1.05))};
+
+/* ---- 분향소 ---- */
+ITEMS.mourn={pos:new THREE.Vector3(DX,0.5,AZ+0.9), face:new THREE.Vector3(DX,1,AZ-0.1), title:'사랑이 분향소', sub:'하얀 국화를 놓고 사랑이에게 인사해요', btn:'헌화하기'};
 
 /* ---- 공원 벤치: 자리 2개씩, 앉으면 식빵 자세 ---- */
 BENCHES.forEach((b,i)=>{
@@ -1248,13 +1367,18 @@ function checkNear(){
       }
       near.classList.add('on');
     }
+    else if(best==='mourn'){ const it=ITEMS.mourn;
+      document.getElementById('nt').textContent=it.title; document.getElementById('ns').textContent=it.sub;
+      btn.textContent=it.btn; btn.style.display='';
+      const b=document.createElement('button'); b.textContent='마지막 날들'; b.onclick=()=>openDiary(); extra.appendChild(b);
+      near.classList.add('on'); }
     else if(typeof best==='string'){ const it=ITEMS[best];
       document.getElementById('nt').textContent=it.title;
       document.getElementById('ns').textContent= STAY[best] ? `${it.sub} · 지금 ${stayPlayers(best)}마리` : it.sub;
       btn.textContent= STAY[best]&&myAct.k===best ? (best==='wand'?'그만 놀기':best==='knead'?'그만하기':it.sit?'일어나기':'그만 긁기') : it.btn;
       if(myAct.k===best) document.getElementById('ns').textContent='조이스틱을 밀면 바로 움직일 수 있어요'; btn.style.display=''; near.classList.add('on'); }
     else if(best===-5){ document.getElementById('nt').textContent='전시관 안내'; document.getElementById('ns').textContent='사랑이 전시관을 만든 이유'; btn.textContent='읽기'; btn.style.display=''; near.classList.add('on'); }
-    else if(best===-6){ document.getElementById('nt').textContent='오늘의 사랑이'; document.getElementById('ns').textContent=`${DIARY[DIARY.length-1].date} 소식까지 올라와 있어요`; btn.textContent='일기 보기'; btn.style.display=''; near.classList.add('on'); }
+    else if(best===-6){ document.getElementById('nt').textContent='사랑이 분향소'; document.getElementById('ns').textContent='사랑이의 마지막 날들'; btn.textContent='일기 보기'; btn.style.display=''; near.classList.add('on'); }
     else if(best===-7){ document.getElementById('nt').textContent='발도장 존'; document.getElementById('ns').textContent='판을 눌러서 도장을 꾹 찍어보세요'; btn.style.display='none'; near.classList.add('on'); }
     else if(best>=0){ near.classList.remove('on'); }
     else if(best===-8){ document.getElementById('nt').textContent='방명록'; document.getElementById('ns').textContent='사랑이에게 한마디 남겨주세요'; btn.textContent='쓰기·보기'; btn.style.display=''; near.classList.add('on'); }
@@ -1280,10 +1404,11 @@ light.onclick=closeLight;
 const diaryEl=document.getElementById('diary');
 function openDiary(){
   const box=document.getElementById('dlist'); box.textContent='';
-  document.getElementById('dtitle').textContent='오늘의 사랑이 🐾';
+  document.getElementById('dtitle').textContent='사랑이의 마지막 날들 🤍';
   DIARY.slice().reverse().forEach(e=>{
     const it=document.createElement('div'); it.className='ditem';
-    const im=document.createElement('img'); im.src=e.src; im.alt=e.date; it.appendChild(im);
+    if(e.src){ const im=document.createElement('img'); im.src=e.src; im.alt=e.date; it.appendChild(im); }
+    else { const st=document.createElement('div'); st.className='dstar'; st.textContent='⭐'; it.appendChild(st); }
     const t=document.createElement('div'); t.className='dd'; t.textContent=`${e.date} (${e.day})`; it.appendChild(t);
     if(e.note){ const n=document.createElement('div'); n.className='dn'; n.textContent=e.note; it.appendChild(n); }
     box.appendChild(it);
@@ -1360,6 +1485,7 @@ function upsertCat(p){
     if(a && ai!==c.lastAi){
       c.actT0=clock.elapsedTime;
       if(a==='churu'||a==='salmon') triggerFood(a);
+      if(a==='mourn') addOffering();
       if(a==='ball') hitBall(ai%2===0?1:-1);
     }
     c.act=a; c.lastAi=ai; if(typeof nearIdx==='string' && (nearIdx===a || STAY[nearIdx] || nearIdx==='tower')) nearIdx=-100;
@@ -1424,6 +1550,9 @@ function doItem(k){
     const sign=Math.random()<.5?-1:1;
     if(!hitBall(sign)){ showToast('털공이 굴러가는 중이에요'); return; }
     setAct('ball',1.3,sign); showToast('툭! 데굴데굴~');
+  } else if(k==='mourn'){
+    if(myAct.k) return;
+    addOffering(); setAct('mourn',3.4); showToast('사랑아, 고마웠어. 고양이별에서 편히 쉬어 🤍');
   } else if(STAY[k]){
     if(myAct.k===k){ endAct(); return; }
     if(myAct.k && myAct.k.startsWith('tw') && k.startsWith('tw')) endAct();
@@ -1604,8 +1733,8 @@ addNpc('hall',0,'치즈','사진 구경하세요 🐾',0,-6);
 addNpc('plaza',2,'턱시','발바닥 도장이랑 방명록 남겨주세요 🐾',3,Z1-5);
 rebuilders.push(()=>NPCS.forEach(npcLabel));
 /* 안내냥이 가끔 놀거리를 써요 (각자 화면에서만, 관람객이 오면 비켜줘요) */
-const NPC_ACTS={hall:['churu','salmon','ball','wand'], plaza:['bench0','bench1','bench2','bench3','scrL','scrR','scrCL','scrCR','tw1','tw2','tw3','knead','knead']};
-const NPC_APPROACH={churu:[0,-7.9], ball:[0,-12.1], salmon:[0,-24.0]};
+const NPC_ACTS={hall:['churu','salmon','ball','wand'], plaza:['bench0','bench1','bench2','bench3','scrL','scrR','scrCL','scrCR','tw1','tw2','tw3','knead','knead','mourn']};
+const NPC_APPROACH={churu:[0,-7.9], ball:[0,-12.1], salmon:[0,-24.0], mourn:[DX,AZ+1.6]};
 function npcPathOk(n,x,z){
   for(let k=1;k<=12;k++){
     const u=k/12, px=n.x+(x-n.x)*u, pz=n.z+(z-n.z)*u;
@@ -1637,7 +1766,7 @@ function npcTryJob(n){
       const [ax,az]=NPC_APPROACH[k];
       if(k==='ball' && ITEMS.ball.ball.state!=='idle') continue;
       if(!npcPathOk(n,ax,az)) continue;
-      n.job={k,slot:-1,ap:{x:ax,z:az},sp:null,dur:k==='ball'?1.4:2.8,phase:'go',t:0}; return true;
+      n.job={k,slot:-1,ap:{x:ax,z:az},sp:null,dur:k==='ball'?1.4:k==='mourn'?3.4:2.8,phase:'go',t:0}; return true;
     }
   }
   return false;
@@ -1666,6 +1795,7 @@ function updateNpcs(dt,t){
       else if(j.phase==='go'){
         if(npcMoveTo(n,j.ap.x,j.ap.z,dt)){
           j.phase='do'; j.t=0; n.act=j.k; n.actT0=t; n.walk=false;
+          if(j.k==='mourn') addOffering();
           if(j.k==='ball'){ const sign=Math.random()<.5?-1:1; if(!hitBall(sign)){ npcEndJob(n); } }
         }
       } else {
@@ -1695,10 +1825,11 @@ function animCat(c,dt,t){
     else if(c.act==='ball' && ael<1.4) mode='bat';
     else if(c.act.startsWith('scr')) mode='scratch';
     else if(c.act==='knead') mode='knead';
+    else if(c.act==='mourn' && ael<3.4) mode='bow';
     else if(c.act.startsWith('bench')||c.act.startsWith('tw')) mode='sit';
     let yawT=c.tyaw;
     if(mode==='sit'||mode==='knead') yawT=ITEMS[c.act].yaw;
-    else if(mode){ const ip=c.act==='wand'?wandMouse.position:c.act==='ball'?ITEMS.ball.pos:ITEMS[c.act].pos; yawT=Math.atan2(-(ip.x-g.position.x),-(ip.z-g.position.z)); }
+    else if(mode){ const ip=c.act==='wand'?wandMouse.position:c.act==='ball'?ITEMS.ball.pos:(ITEMS[c.act].face||ITEMS[c.act].pos); yawT=Math.atan2(-(ip.x-g.position.x),-(ip.z-g.position.z)); }
     g.rotation.y=angLerp(g.rotation.y,yawT,k);
     u.phase+=dt*(moving&&!mode?10:0);
     let rigX=0, headX=0, rigY=moving?Math.abs(Math.sin(u.phase))*0.04:Math.sin(t*2+u.phase)*0.006;
@@ -1714,6 +1845,7 @@ function animCat(c,dt,t){
     if(mode==='eat'){ rigX=-0.22; headX=-0.35+Math.sin(t*9)*0.12; }
     if(mode==='scratch'){ rigX=0.6; rigY=0.12; }
     if(mode==='sit'){ rigY=-0.2+Math.sin(t*1.6)*0.006; headX=-0.12; }
+    if(mode==='bow'){ const b=Math.sin(Math.min(1,ael/3.4)*Math.PI); rigX=-0.18*b; headX=-0.6*b; }
     if(mode==='knead'){ rigX=-0.08; rigY=-0.1+Math.abs(Math.sin(t*5))*0.025; headX=0.12+Math.sin(t*2.5)*0.05; }
     if(mode==='play'){ rigX=0.38; rigY=0.08+Math.abs(Math.sin(t*3))*0.1; }
     u.rig.rotation.x+=(rigX-u.rig.rotation.x)*0.15;
@@ -1733,7 +1865,7 @@ function loop(){
 function frame(){
   const dt=Math.min(clock.getDelta(),0.05), t=clock.elapsedTime;
   if(entered && !light.classList.contains('on') && !gbEl.classList.contains('on') && !diaryEl.classList.contains('on')){ const mg=step(dt); bob+=dt*mg*9; } else me.walking=false;
-  updateMyAct(dt,t); updateItems(dt,t);
+  updateMyAct(dt,t); updateItems(dt,t); updateAltar(dt,t);
   checkNear(); sendPresence(false);
   updateNpcs(dt,t);
   if(myCat){ Object.assign(myCat,{tx:me.x,tz:me.z,tyaw:me.catYaw,walk:me.walking,act:myAct.k,actT0:myAct.t0}); animCat(myCat,dt,t); }
