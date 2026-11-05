@@ -836,7 +836,6 @@ rebuilders.push(()=>{ if(altarFront){ altarFront.map=tex(altarFrontCanvas()); al
 
 /* ================== 사랑이 분향소 (일기 게시판 앞) ================== */
 const AZ=DZ+0.62, AH=0.86;   // 제단 앞뒤 위치, 높이
-const offerings=[]; let offerN=0;
 const flames=[], smokes=[];
 let mumWhite, mumYellow, stemM;
 function mum(scale,mat){
@@ -923,20 +922,64 @@ let altarFront;
   const cl=new THREE.PointLight(0xffc98a,0.55,4.5,1.8); cl.position.set(DX,AH+0.7,AZ+0.5); scene.add(cl); flames.light=cl;
   g.userData.root=true; window.__altar=g;
 })();
-// 헌화: 제단 앞쪽에 국화가 한 송이씩 놓여요 (최대 16송이, 넘치면 오래된 것부터)
-function addOffering(){
-  const g=window.__altar; if(!g) return;
-  const i=offerN++%16, col=i%8, row=Math.floor(i/8);
-  let f=offerings[i];
-  if(!f){ f=new THREE.Group(); const st=new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.3,5), stemM); st.rotation.z=Math.PI/2; st.position.x=0.13; f.add(st); const m=mum(1.0); m.rotation.z=Math.PI/2; f.add(m); g.add(f); offerings[i]=f; }
-  f.position.set(-1.3+col*0.12+row*0.06, AH+0.04, 0.3-row*0.02); f.rotation.y=-0.5+((i*37)%10)*0.1;
-  f.scale.setScalar(0.01); f.userData.t=0;
+// 헌화: 모두가 놓은 국화가 저장되어 계속 쌓여요 (제단 위 → 제단 앞 바닥에 소복이)
+const FLOWER_MAX=600;
+let flowerCount=0, flowerInst=null; const flowerGrow=[];
+function fRand(i,k){ const x=Math.sin(i*127.1+k*311.7)*43758.5453; return x-Math.floor(x); }
+function flowerSlot(i){
+  // 제단 위 두 줄 (향로 자리는 비워요)
+  const top=[]; for(let r=0;r<2;r++) for(let c=0;c<11;c++){ const x=-1.3+c*0.26+r*0.13; if(Math.abs(x)<0.2) continue; top.push([x,AH+0.04+r*0.015,0.35-r*0.1]); }
+  if(i<top.length){ const [x,y,z]=top[i]; return {x:x+(fRand(i,1)-.5)*0.05, y, z, r:-0.6+fRand(i,2)*1.2, s:1}; }
+  // 제단 앞 바닥: 층층이 쌓여요
+  const j=i-top.length, per=30, layer=Math.floor(j/per), k=j%per;
+  const row=Math.floor(k/10), col=k%10, sh=Math.max(0.35,1-layer*0.06);
+  const x=(-1.35+col*0.3+(row%2)*0.15+(fRand(i,3)-.5)*0.12)*sh;
+  const z=0.52+row*0.13+(fRand(i,4)-.5)*0.06;
+  return {x, y:0.04+layer*0.055+fRand(i,5)*0.015, z, r:fRand(i,6)*Math.PI*2, s:1.35};
+}
+const _m=new THREE.Matrix4(), _b=new THREE.Matrix4(), _p=new THREE.Matrix4(), _q=new THREE.Quaternion(), _e=new THREE.Euler(), _v=new THREE.Vector3(), _s=new THREE.Vector3();
+const PETAL_L=[]; for(let i=0;i<9;i++){ const a=i/9*Math.PI*2; PETAL_L.push(new THREE.Matrix4().compose(new THREE.Vector3(Math.cos(a)*0.045,0,Math.sin(a)*0.045), new THREE.Quaternion().setFromEuler(new THREE.Euler(0,-a,0)), new THREE.Vector3(1,0.55,1.7))); }
+const HEAD_L=new THREE.Matrix4().makeRotationZ(Math.PI/2);
+const STEM_L=new THREE.Matrix4().compose(new THREE.Vector3(0.13,0,0), new THREE.Quaternion().setFromEuler(new THREE.Euler(0,0,Math.PI/2)), new THREE.Vector3(1,1,1));
+function setFlower(i,sc){
+  const sl=flowerSlot(i);
+  _e.set(0,sl.r,0); _q.setFromEuler(_e); _v.set(sl.x,sl.y,sl.z); _s.setScalar(sc*sl.s); _b.compose(_v,_q,_s);
+  _m.multiplyMatrices(_b,STEM_L); flowerInst.stem.setMatrixAt(i,_m);
+  _p.multiplyMatrices(_b,HEAD_L);
+  for(let k=0;k<9;k++){ _m.multiplyMatrices(_p,PETAL_L[k]); flowerInst.petal.setMatrixAt(i*9+k,_m); }
+  _m.multiplyMatrices(_p,new THREE.Matrix4().makeTranslation(0,0.02,0)); flowerInst.core.setMatrixAt(i,_m);
+  _m.multiplyMatrices(_p,new THREE.Matrix4().makeTranslation(0,0.04,0)); flowerInst.yel.setMatrixAt(i,_m);
+}
+function initFlowers(){
+  const g=window.__altar; if(!g||flowerInst) return;
+  const mk2=(geo,mat,n)=>{ const m=new THREE.InstancedMesh(geo,mat,n); m.count=0; m.frustumCulled=false; g.add(m); return m; };
+  flowerInst={ stem:mk2(new THREE.CylinderGeometry(0.006,0.006,0.3,5),stemM,FLOWER_MAX),
+    petal:mk2(new THREE.SphereGeometry(0.035,7,5),mumWhite,FLOWER_MAX*9),
+    core:mk2(new THREE.SphereGeometry(0.035,7,5),mumWhite,FLOWER_MAX),
+    yel:mk2(new THREE.SphereGeometry(0.018,6,4),mumYellow,FLOWER_MAX) };
+}
+function setFlowerCount(n, growNew){
+  initFlowers(); if(!flowerInst) return;
+  n=Math.min(n,FLOWER_MAX);
+  const from=flowerCount;
+  for(let i=0;i<n;i++) if(i>=from || i<0) setFlower(i, growNew&&i>=from?0.01:1);
+  if(growNew) for(let i=from;i<n;i++) flowerGrow.push({i,t:0});
+  flowerCount=n;
+  flowerInst.stem.count=flowerInst.core.count=flowerInst.yel.count=n; flowerInst.petal.count=n*9;
+  ['stem','petal','core','yel'].forEach(k=>flowerInst[k].instanceMatrix.needsUpdate=true);
+}
+let flowersSaved=false, flowerTotal=0, lastFlower=0;
+function addOffering(){   // 저장이 안 될 때만 내 화면에 한 송이
+  setFlowerCount(flowerCount+1,true);
 }
 function updateAltar(dt,t){
   flames.forEach((f,i)=>{ const k=1+Math.sin(t*13+i*2)*0.12+Math.sin(t*23+i)*0.06; f.scale.set(1,k,1); });
   if(flames.light) flames.light.intensity=0.5+Math.sin(t*11)*0.05+Math.sin(t*17)*0.04;
   smokes.forEach(sp=>{ const u=(t*0.18+sp.userData.o)%1; sp.position.set(Math.sin(u*7+sp.userData.o*9)*0.05*u, AH+0.33+u*0.9, 0.33); sp.scale.setScalar(0.06+u*0.28); sp.material.opacity=(1-u)*0.6; });
-  offerings.forEach(f=>{ if(f && f.userData.t<1){ f.userData.t=Math.min(1,f.userData.t+dt*2.5); f.scale.setScalar(f.userData.t); } });
+  if(flowerGrow.length && flowerInst){
+    for(let k=flowerGrow.length-1;k>=0;k--){ const f=flowerGrow[k]; f.t=Math.min(1,f.t+dt*2.2); if(f.i<flowerCount) setFlower(f.i,Math.max(0.01,1-Math.pow(1-f.t,3))); if(f.t>=1) flowerGrow.splice(k,1); }
+    ['stem','petal','core','yel'].forEach(k=>flowerInst[k].instanceMatrix.needsUpdate=true);
+  }
 }
 
 /* ================== 방명록 게시판 (광장 오른쪽) ================== */
@@ -1368,7 +1411,7 @@ function checkNear(){
       near.classList.add('on');
     }
     else if(best==='mourn'){ const it=ITEMS.mourn;
-      document.getElementById('nt').textContent=it.title; document.getElementById('ns').textContent=it.sub;
+      document.getElementById('nt').textContent=it.title; document.getElementById('ns').textContent= flowersSaved ? `지금까지 국화 ${flowerTotal}송이가 놓였어요` : it.sub;
       btn.textContent=it.btn; btn.style.display='';
       const b=document.createElement('button'); b.textContent='마지막 날들'; b.onclick=()=>openDiary(); extra.appendChild(b);
       near.classList.add('on'); }
@@ -1485,7 +1528,7 @@ function upsertCat(p){
     if(a && ai!==c.lastAi){
       c.actT0=clock.elapsedTime;
       if(a==='churu'||a==='salmon') triggerFood(a);
-      if(a==='mourn') addOffering();
+      if(a==='mourn' && !flowersSaved) addOffering();
       if(a==='ball') hitBall(ai%2===0?1:-1);
     }
     c.act=a; c.lastAi=ai; if(typeof nearIdx==='string' && (nearIdx===a || STAY[nearIdx] || nearIdx==='tower')) nearIdx=-100;
@@ -1552,7 +1595,13 @@ function doItem(k){
     setAct('ball',1.3,sign); showToast('툭! 데굴데굴~');
   } else if(k==='mourn'){
     if(myAct.k) return;
-    addOffering(); setAct('mourn',3.4); showToast('사랑아, 고마웠어. 고양이별에서 편히 쉬어 🤍');
+    if(Date.now()-lastFlower<4000){ showToast('조금만 있다가 다시 놓아주세요'); return; }
+    lastFlower=Date.now(); setAct('mourn',3.4);
+    if(flowersSaved && gdb){
+      gdb.collection('flowers').add({n:me.name, c:me.fur, ts:Date.now(), u:myId||''})
+        .then(()=>showToast('사랑아, 고마웠어. 고양이별에서 편히 쉬어 🤍'))
+        .catch(()=>{ addOffering(); showToast('국화를 놓았어요 🤍 (저장은 안 됐어요)'); });
+    } else { addOffering(); showToast('사랑아, 고마웠어. 고양이별에서 편히 쉬어 🤍'); }
   } else if(STAY[k]){
     if(myAct.k===k){ endAct(); return; }
     if(myAct.k && myAct.k.startsWith('tw') && k.startsWith('tw')) endAct();
@@ -1681,6 +1730,11 @@ gbSend.onclick=async()=>{
         return {id:doc.id, name:isBad(nm)?'관람객':nm, shown:CHEER[q], ts:Number(v.ts)||0, u:String(v.u||'')}; }).filter(Boolean);
       redrawBoard(); if(gbEl.classList.contains('on')) renderGB();
     }, ()=>{ gbLoaded=true; clearTimeout(timer); gdb=null; renderGB(); });
+    gdb.collection('flowers').orderBy('ts','desc').limit(FLOWER_MAX).onSnapshot(snap=>{
+      const first=!flowersSaved; flowersSaved=true; flowerTotal=snap.size;
+      setFlowerCount(snap.size, !first);
+      if(nearIdx==='mourn') nearIdx=-100;
+    }, ()=>{ flowersSaved=false; });
     gdb.collection('stamps').orderBy('ts','desc').limit(400).onSnapshot(snap=>{
       stamps=snap.docs.map(doc=>{ const v=doc.data()||{}; const nm=clean(v.n);
         return {x:num(v.x,-1,-1,2), y:num(v.y,-1,-1,2), n:isBad(nm)?'관람객':nm, c:num(v.c,0,0,FURS.length-1)|0, ts:Number(v.ts)||0}; })
@@ -1795,7 +1849,6 @@ function updateNpcs(dt,t){
       else if(j.phase==='go'){
         if(npcMoveTo(n,j.ap.x,j.ap.z,dt)){
           j.phase='do'; j.t=0; n.act=j.k; n.actT0=t; n.walk=false;
-          if(j.k==='mourn') addOffering();
           if(j.k==='ball'){ const sign=Math.random()<.5?-1:1; if(!hitBall(sign)){ npcEndJob(n); } }
         }
       } else {
