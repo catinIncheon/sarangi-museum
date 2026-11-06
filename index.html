@@ -299,6 +299,9 @@ const WELCOME = {
   sign: "사랑이 가족 드림",
 };
 
+const STATUE_IMG = "statue.png";   // 광장 동상 사진 (""로 비우면 원래 3D 동상)
+let photoStatue=null;
+
 const MUSEUM = { name:"사랑이", sub:"함께한 모든 날이 선물이었어" };
 
 const ADJ = ['말랑한','포근한','졸린','수줍은','용감한','반짝이는','동글동글한','느긋한','상냥한','배고픈',
@@ -679,6 +682,19 @@ const PL=12, PZ0=Z1, PZ1=Z1-26, SZ=(PZ0+PZ1)/2;   // 광장 반폭, 시작/끝 z
   const tl=new THREE.Mesh(new THREE.TorusGeometry(0.46,0.06,10,28,Math.PI*0.95), tabby);
   tl.rotation.x=Math.PI/2; tl.rotation.z=Math.PI*0.05; tl.position.set(0,0.06,0.02); st.add(tl);
   st.scale.setScalar(2.1); st.rotation.y=Math.PI; st.position.set(0,1.56,SZ); scene.add(st);
+  // 사진 동상: statue.png가 있으면 사진 속 사랑이가 받침대 위에 서요 (항상 보는 사람 쪽을 봐요)
+  if(STATUE_IMG){
+    texLoader.load(STATUE_IMG, t=>{
+      t.encoding=THREE.sRGBEncoding; t.anisotropy=renderer.capabilities.getMaxAnisotropy();
+      const h=3.7, w=h*t.image.width/t.image.height;
+      const geo=new THREE.PlaneGeometry(w,h); geo.translate(0,h/2,0);
+      const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:t, transparent:true, alphaTest:0.08, depthWrite:true, side:THREE.DoubleSide}));
+      m.position.set(0,1.53,SZ); scene.add(m); photoStatue=m;
+      st.visible=false;
+      const sh=new THREE.Mesh(new THREE.CircleGeometry(0.9,32), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:.18, depthWrite:false}));
+      sh.rotation.x=-Math.PI/2; sh.scale.set(1.15,0.55,1); sh.position.set(0,1.565,SZ); scene.add(sh);
+    });
+  }
   const ssp=new THREE.SpotLight(0xffe6c4, 1.2, 14, 0.5, 0.6, 1.2); ssp.position.set(0,9,SZ+5); ssp.target=st; scene.add(ssp);
 })();
 
@@ -973,6 +989,7 @@ function addOffering(){   // 저장이 안 될 때만 내 화면에 한 송이
   setFlowerCount(flowerCount+1,true);
 }
 function updateAltar(dt,t){
+  if(photoStatue) photoStatue.rotation.y=Math.atan2(camera.position.x-photoStatue.position.x, camera.position.z-photoStatue.position.z);
   flames.forEach((f,i)=>{ const k=1+Math.sin(t*13+i*2)*0.12+Math.sin(t*23+i)*0.06; f.scale.set(1,k,1); });
   if(flames.light) flames.light.intensity=0.5+Math.sin(t*11)*0.05+Math.sin(t*17)*0.04;
   smokes.forEach(sp=>{ const u=(t*0.18+sp.userData.o)%1; sp.position.set(Math.sin(u*7+sp.userData.o*9)*0.05*u, AH+0.33+u*0.9, 0.33); sp.scale.setScalar(0.06+u*0.28); sp.material.opacity=(1-u)*0.6; });
